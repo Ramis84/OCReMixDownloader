@@ -20,23 +20,85 @@ namespace OCRemixDownloader
 
         static async Task MainAsync(string[] args)
         {
-            // Get download path from parameters
-            if (args.Length != 1)
+            if (args.Length == 0)
             {
-                Console.WriteLine("Usage: OCRemixDownloader.exe <download_folder_path>");
-                return;
-            }
-            var downloadFolderPath = args[0];
-            if (!Directory.Exists(downloadFolderPath))
-            {
-                Console.WriteLine($"Download folder path does not exist: {downloadFolderPath}");
+                // Print usage information
+                Console.WriteLine("ocremixdownloader:");
+                Console.WriteLine("  Downloads OCRemix songs to a specified folder, remembering the last downloaded song.");
+                Console.WriteLine("Usage:");
+                Console.WriteLine("  ocremixdownloader [options]");
+                Console.WriteLine("Options:");
+                Console.WriteLine("  --output <PATH>    The folder where songs will be stored. (Required)");
+                Console.WriteLine("  --config <PATH>    The file (json) where settings and last downloaded song number will be stored. (Optional)");
+                Console.WriteLine("Example:");
+                Console.WriteLine("  ocremixdownloader --config \"C:/Files/settings.json\" --output \"C:/Download/\"");
                 return;
             }
 
-            // Read settings json from same folder as app
-            var settingsPath = Path.Combine(Directory.GetCurrentDirectory(), "settings.json");
-            var settingsContent = File.ReadAllText(settingsPath);
-            var settings = JsonSerializer.Deserialize<SettingsModel>(settingsContent);
+            // Read parameters from command line
+            string? configPath = null;
+            string? outputPath = null;
+            for (int i = 0; i < args.Length; i++)
+            {
+                switch (args[i])
+                {
+                    case "--config" when i + 1 < args.Length:
+                        configPath = args[++i];
+                        break;
+                    case "--output" when i + 1 < args.Length:
+                        outputPath = args[++i];
+                        break;
+                    default:
+                        Console.WriteLine($"Invalid parameter: {args[i]}");
+                        return;
+                }
+            }
+
+            // Check required parameters
+            if (outputPath == null)
+            {
+                Console.WriteLine("Missing parameter: --output");
+                return;
+            }
+            if (!Directory.Exists(outputPath))
+            {
+                Console.WriteLine($"Output folder path does not exist: {outputPath}");
+                return;
+            }
+
+            // Check optional parameters
+            if (configPath == null)
+            {
+                Console.WriteLine("NOTE: --config option omitted, will not remember the last downloaded song.");
+            }
+
+            // Read config file (if available)
+            string? settingsContent;
+            SettingsModel? settings;
+            if (configPath != null && File.Exists(configPath))
+            {
+                try
+                {
+                    settingsContent = File.ReadAllText(configPath);
+                    settings = JsonSerializer.Deserialize<SettingsModel>(settingsContent);
+                }
+                catch
+                {
+                    Console.WriteLine($"Error: Could not load settings from config path, check permissions: {configPath}");
+                    return;
+                }
+            }
+            else
+            {
+                // Use empty settings
+                settings = new SettingsModel();
+            }
+
+            // Default values in settings
+            if (string.IsNullOrWhiteSpace(settings.DownloadUrl))
+            {
+                settings.DownloadUrl = "http://ocremix.org/remix/OCR{0:D5}";
+            }
 
             // Read the starting OCRemix song number from settings if possible
             int nextDownloadNumber;
@@ -75,8 +137,10 @@ namespace OCRemixDownloader
 
                     /* Try using the download links from HTML-page, look for links with text "Download from".
                        Try all mirrors until we find a working one */
-                    foreach (Match match in DownloadLinkRegex.Matches(htmlContent))
+                    foreach (Match? match in DownloadLinkRegex.Matches(htmlContent))
                     {
+                        if (match == null) continue;
+
                         var downloadUrlHtmlEncoded = match.Groups["href"].Value; // Get url portion from link
                         var downloadUrl = System.Web.HttpUtility.HtmlDecode(downloadUrlHtmlEncoded); // Decode HTML encoded characters, like "&amp;" to "&"
 
@@ -94,16 +158,14 @@ namespace OCRemixDownloader
                             var fileName = Uri.UnescapeDataString(fileNameUrlEncoded); // Decode URL escaped characters, like %20 to space
 
                             // Store remix bytes to file on disk
-                            var filePath = Path.Combine(downloadFolderPath, fileName);
+                            var filePath = Path.Combine(outputPath, fileName);
                             File.WriteAllBytes(filePath, downloadBytes);
                             success = true;
                             break; // Stop trying other mirrors
                         }
-                        else
-                        {
-                            // Download failed, try next available mirror
-                            Console.WriteLine($"downloadfail {downloadUrl}, statuscode: {(int)downloadResponse.StatusCode}");
-                        }
+
+                        // Download failed, try next available mirror
+                        Console.WriteLine($"downloadfail {downloadUrl}, statuscode: {(int)downloadResponse.StatusCode}");
                     }
 
                     if (!success)
@@ -132,16 +194,28 @@ namespace OCRemixDownloader
 
             Console.WriteLine($"Too many consecutive errors, will start downloading from {nextDownloadNumber} next time");
 
-            // Save settings for next run
-            settings.NextDownloadNumber = nextDownloadNumber;
-
-            var serializerOptions = new JsonSerializerOptions
+            if (configPath != null)
             {
-                IgnoreNullValues = true,
-                WriteIndented = true
-            };
-            settingsContent = JsonSerializer.Serialize(settings, serializerOptions);
-            File.WriteAllText(settingsPath, settingsContent);
+                // Save settings for next run
+                settings.NextDownloadNumber = nextDownloadNumber;
+
+                var serializerOptions = new JsonSerializerOptions
+                {
+                    IgnoreNullValues = true,
+                    WriteIndented = true
+                };
+                settingsContent = JsonSerializer.Serialize(settings, serializerOptions);
+
+                try
+                {
+                    File.WriteAllText(configPath, settingsContent);
+                }
+                catch
+                {
+                    Console.WriteLine($"Error: Could not save settings to config path, check permissions: {configPath}");
+                    return;
+                }
+            }
         }
     }
 }
