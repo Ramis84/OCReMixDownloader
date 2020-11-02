@@ -2,9 +2,9 @@
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 
 namespace OCRemixDownloader
 {
@@ -36,7 +36,7 @@ namespace OCRemixDownloader
             // Read settings json from same folder as app
             var settingsPath = Path.Combine(Directory.GetCurrentDirectory(), "settings.json");
             var settingsContent = File.ReadAllText(settingsPath);
-            var settings = (SettingsModel)JsonConvert.DeserializeObject(settingsContent, typeof(SettingsModel));
+            var settings = JsonSerializer.Deserialize<SettingsModel>(settingsContent);
 
             // Read the starting OCRemix song number from settings if possible
             int nextDownloadNumber;
@@ -134,7 +134,13 @@ namespace OCRemixDownloader
 
             // Save settings for next run
             settings.NextDownloadNumber = nextDownloadNumber;
-            settingsContent = JsonConvert.SerializeObject(settings, new JsonSerializerSettings {NullValueHandling = NullValueHandling.Ignore, Formatting = Formatting.Indented});
+
+            var serializerOptions = new JsonSerializerOptions
+            {
+                IgnoreNullValues = true,
+                WriteIndented = true
+            };
+            settingsContent = JsonSerializer.Serialize(settings, serializerOptions);
             File.WriteAllText(settingsPath, settingsContent);
         }
     }
