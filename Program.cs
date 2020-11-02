@@ -23,7 +23,7 @@ namespace OCRemixDownloader
             if (args.Length == 0)
             {
                 // Print usage information
-                Console.WriteLine("ocremixdownloader:");
+                Console.WriteLine("ocremixdownloader 1.0.2:");
                 Console.WriteLine("  Downloads OCRemix songs to a specified folder, remembering the last downloaded song.");
                 Console.WriteLine("Usage:");
                 Console.WriteLine("  ocremixdownloader [options]");
