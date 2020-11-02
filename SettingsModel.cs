@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace OCRemixDownloader
+﻿namespace OCRemixDownloader
 {
     public class SettingsModel
     {
-        public string DownloadUrl { get; set; }
+        public string? DownloadUrl { get; set; }
         public int? NextDownloadNumber { get; set; }
     }
 }
