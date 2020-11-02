@@ -3,3 +3,4 @@
 obj/
 bin/
 Properties/launchSettings.json
+nupkg/
