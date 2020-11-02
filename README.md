@@ -40,6 +40,7 @@ You may also download the latest binaries from the releases-page, and run manual
 
 ## Using OCRemixDownloader
 
+```
 Usage:
   ocremixdownloader [options]
 Options:
@@ -47,3 +48,4 @@ Options:
   --config <PATH>    The file (json) where settings and last downloaded song number will be stored. (Optional)
 Example:
   ocremixdownloader --config "C:/Files/settings.json" --output "C:/Download/"
+```
