@@ -4,6 +4,19 @@
 ## Overview
 OCRemixDownloader is a cross-platform command line tool to download the latest OCRemix (OverClocked ReMix) songs from the official website. The tool will remember the last downloaded song, and continue from that at next run. It has been developed using .Net Core in Visual Studio 2019 (C#).
 
+## Using OCRemixDownloader
+```
+Usage:
+  ocremixdownloader [options]
+Options:
+  --output <PATH>    The folder where songs will be stored. (Required)
+  --config <PATH>    The file (json) where settings and last downloaded song number will be stored. Will be created if it does not exist. (Optional)
+Example:
+  ocremixdownloader --config "C:/Files/settings.json" --output "C:/Download/"
+```
+
+On first run (when the specified config file does not exist yet or does not contain the latest downloaded song number), you will get to input the song number to start from.
+
 ## Installation
 
 ### Prerequisites
@@ -37,15 +50,3 @@ OCRemixDownloader is available as a .Net Core tool (supported by Windows, MacOS,
 You may also download the latest binaries from the releases-page, and run manually in Windows/Linux or MacOS using the command line.
 
 - https://github.com/Ramis84/OCRemixDownloader/releases
-
-## Using OCRemixDownloader
-
-```
-Usage:
-  ocremixdownloader [options]
-Options:
-  --output <PATH>    The folder where songs will be stored. (Required)
-  --config <PATH>    The file (json) where settings and last downloaded song number will be stored. (Optional)
-Example:
-  ocremixdownloader --config "C:/Files/settings.json" --output "C:/Download/"
-```
