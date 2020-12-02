@@ -1,8 +1,8 @@
 # OCRemixDownloader
- A downloader for OverClocked ReMix (OCRemix) songs
 
-## Overview
-OCRemixDownloader is a cross-platform command line tool to download the latest OCRemix (OverClocked ReMix) songs from the official website. The tool will remember the last downloaded song, and continue from that at next run. It has been developed using .Net 5 (C#).
+A cross-platform command line tool to download the latest OCRemix (OverClocked ReMix) songs from the official website. The tool will (optionally) remember the last downloaded song, and continue from that at next run.
+
+**NOTE:** If you want to download the entire back catalogue of songs, please check the [torrent page](https://ocremix.org/torrents) at ocremix instead to save on time/bandwidth.
 
 ## Using OCRemixDownloader
 ```
@@ -21,8 +21,7 @@ On first run (when the specified config file does not exist yet or does not cont
 
 ### Prerequisites
 
-Before installing OCRemixDownloader, make sure that the latest .Net Runtime (minimum 5.0) is installed (available on Windows/Linux & MacOS)
-- https://dotnet.microsoft.com/download
+Before installing OCRemixDownloader, make sure that the latest [.Net Runtime (minimum 5.0)](https://dotnet.microsoft.com/download) is installed (available on Windows/Linux & MacOS)
 
 ### Installing as a NuGet package
 
@@ -50,3 +49,7 @@ OCRemixDownloader is available as a .Net Tool (supported by Windows, MacOS, Linu
 You may also download the latest binaries from the releases-page, and run manually in Windows/Linux or MacOS using the command line.
 
 - https://github.com/Ramis84/OCRemixDownloader/releases
+
+### Run/compile from source
+
+The application has been developed using .Net 5 (C#), and can be compiled/run using Visual Studio Code or just the .Net CLI (included in the [.Net 5.0 SDK](https://dotnet.microsoft.com/download)). Download the repository and execute the terminal command `dotnet run` to run from source, or `dotnet build` to build binaries.
