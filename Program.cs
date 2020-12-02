@@ -5,130 +5,213 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 
 namespace OCRemixDownloader
 {
     class Program
     {
         private static readonly HttpClient DownloadClient = new HttpClient();
+        private static readonly XmlSerializer RssSerializer = new XmlSerializer(typeof(RssRoot));
         private static readonly Regex DownloadLinkRegex = new Regex("<a href=\"(?<href>[^\"]+)\">Download from");
+        private const string DownloadUrl = "http://ocremix.org/remix/OCR{0:D5}";
 
-        static void Main(string[] args)
-        {
-            MainAsync(args).GetAwaiter().GetResult();
-        }
-
-        static async Task MainAsync(string[] args)
+        static async Task Main(string[] args)
         {
             if (args.Length == 0)
             {
                 // Print usage information
-                Console.WriteLine("ocremixdownloader 1.0.2:");
+                Console.WriteLine("ocremixdownloader 1.0.3:");
                 Console.WriteLine("  Downloads OCRemix songs to a specified folder, remembering the last downloaded song.");
                 Console.WriteLine("Usage:");
                 Console.WriteLine("  ocremixdownloader [options]");
                 Console.WriteLine("Options:");
                 Console.WriteLine("  --output <PATH>    The folder where songs will be stored. (Required)");
-                Console.WriteLine("  --config <PATH>    The file (json) where settings and last downloaded song number will be stored. (Optional)");
+                Console.WriteLine("  --config <PATH>    The file (json) where settings and last downloaded song number will be stored. Will be created if it does not exist. (Optional)");
                 Console.WriteLine("Example:");
                 Console.WriteLine("  ocremixdownloader --config \"C:/Files/settings.json\" --output \"C:/Download/\"");
                 return;
             }
 
             // Read parameters from command line
-            string? configPath = null;
-            string? outputPath = null;
+            var parameters = ReadParameters(args);
+            if (parameters == null) return;
+
+            // Check required parameters
+            if (parameters.OutputPath == null)
+            {
+                Console.WriteLine("Missing parameter: --output");
+                return;
+            }
+            if (!Directory.Exists(parameters.OutputPath))
+            {
+                Console.WriteLine($"Output folder path does not exist: {parameters.OutputPath}");
+                return;
+            }
+
+            // Check optional parameters
+            if (parameters.ConfigPath == null)
+            {
+                Console.WriteLine("WARNING: --config option omitted, will not remember the last downloaded song.");
+            }
+
+            // Read config file (if available)
+            var settings = await ReadSettings(parameters.ConfigPath);
+            if (settings == null)
+            {
+                Console.WriteLine($"Error: Could not load settings from config path, check permissions: {parameters.ConfigPath}");
+                return;
+            }
+
+            // Read the starting OCRemix song number from settings if possible, otherwise let user type in
+            if (!settings.NextDownloadNumber.HasValue)
+            {
+                // Let user decide on first release number, since missing in settings
+                Console.Write("Please input OC ReMix song number to begin downloading from (e.g 3745): ");
+                var input = Console.ReadLine();
+                if (!int.TryParse(input, out var nextDownloadNumber))
+                {
+                    Console.WriteLine("Input not valid number");
+                    return;
+                }
+
+                settings.NextDownloadNumber = nextDownloadNumber;
+            }
+
+            var latestSongNumber = await GetLatestSongNumberFromRss();
+            if (!latestSongNumber.HasValue)
+            {
+                return;
+            }
+
+            if (latestSongNumber < settings.NextDownloadNumber)
+            {
+                Console.WriteLine("There are no new songs to download");
+                return;
+            }
+
+            Console.WriteLine($"There are {latestSongNumber - settings.NextDownloadNumber + 1} new song(s) to attempt to download");
+
+            // Begin downloading from the given remix number, and continue until we have reached the latest remix
+            settings.NextDownloadNumber = await DownloadSongs(settings.NextDownloadNumber.Value, latestSongNumber.Value, parameters.OutputPath);
+
+            if (parameters.ConfigPath != null)
+            {
+                Console.WriteLine($"Done. Will continue downloading from {settings.NextDownloadNumber} at next run");
+
+                await WriteSettings(parameters.ConfigPath, settings);
+            }
+            else
+            {
+                Console.WriteLine("Done");
+            }
+        }
+
+        private class Parameters
+        {
+            public string? ConfigPath { get; set; }
+            public string? OutputPath { get; set; }
+        }
+
+        private static Parameters? ReadParameters(string[] args)
+        {
+            // Read parameters from command line
+            var parameters = new Parameters();
+            
             for (int i = 0; i < args.Length; i++)
             {
                 switch (args[i])
                 {
                     case "--config" when i + 1 < args.Length:
-                        configPath = args[++i];
+                        parameters.ConfigPath = args[++i];
                         break;
                     case "--output" when i + 1 < args.Length:
-                        outputPath = args[++i];
+                        parameters.OutputPath = args[++i];
                         break;
                     default:
                         Console.WriteLine($"Invalid parameter: {args[i]}");
-                        return;
+                        return null;
                 }
             }
 
-            // Check required parameters
-            if (outputPath == null)
-            {
-                Console.WriteLine("Missing parameter: --output");
-                return;
-            }
-            if (!Directory.Exists(outputPath))
-            {
-                Console.WriteLine($"Output folder path does not exist: {outputPath}");
-                return;
-            }
+            return parameters;
+        }
 
-            // Check optional parameters
-            if (configPath == null)
-            {
-                Console.WriteLine("NOTE: --config option omitted, will not remember the last downloaded song.");
-            }
-
-            // Read config file (if available)
-            string? settingsContent;
-            SettingsModel? settings;
+        private static async Task<SettingsModel?> ReadSettings(string? configPath)
+        {
             if (configPath != null && File.Exists(configPath))
             {
                 try
                 {
-                    settingsContent = File.ReadAllText(configPath);
-                    settings = JsonSerializer.Deserialize<SettingsModel>(settingsContent);
+                    var settingsContent = await File.ReadAllTextAsync(configPath);
+                    return JsonSerializer.Deserialize<SettingsModel>(settingsContent) ?? new SettingsModel();
                 }
                 catch
                 {
-                    Console.WriteLine($"Error: Could not load settings from config path, check permissions: {configPath}");
-                    return;
-                }
-            }
-            else
-            {
-                // Use empty settings
-                settings = new SettingsModel();
-            }
-
-            // Default values in settings
-            if (string.IsNullOrWhiteSpace(settings.DownloadUrl))
-            {
-                settings.DownloadUrl = "http://ocremix.org/remix/OCR{0:D5}";
-            }
-
-            // Read the starting OCRemix song number from settings if possible
-            int nextDownloadNumber;
-            if (settings.NextDownloadNumber.HasValue)
-            {
-                nextDownloadNumber = settings.NextDownloadNumber.Value;
-            }
-            else
-            {
-                // Let user decide on first release number, since missing in settings
-                Console.Write("Please input OC ReMix song number to begin downloading from (e.g 3745): ");
-                var input = Console.ReadLine();
-                if (!int.TryParse(input, out nextDownloadNumber))
-                {
-                    Console.WriteLine("Input not valid number");
-                    return;
+                    return null;
                 }
             }
 
-            /* Begin downloading from the given remix number, and continue until we have had 5 consecutive errors (404-NotFound usually)
-               which indicates that we have reached the latest remix */
-            var currentAttemptNumber = nextDownloadNumber;
-            var consecutiveErrors = 0;
-            while (consecutiveErrors < 5)
+            // Use empty settings
+            return new SettingsModel();
+        }
+
+        private static async Task WriteSettings(string configPath, SettingsModel settings)
+        {
+            var serializerOptions = new JsonSerializerOptions
+            {
+                IgnoreNullValues = true,
+                WriteIndented = true
+            };
+            var settingsContent = JsonSerializer.Serialize(settings, serializerOptions);
+
+            try
+            {
+                await File.WriteAllTextAsync(configPath, settingsContent);
+            }
+            catch
+            {
+                Console.WriteLine($"Error: Could not save settings to config path, check permissions: {configPath}");
+            }
+        }
+
+        private static async Task<int?> GetLatestSongNumberFromRss()
+        {
+            // Get RSS feed, to read latest song number
+            var rssFeedResponse = await DownloadClient.GetAsync("https://ocremix.org/feeds/ten20/");
+            if (!rssFeedResponse.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"Error: Could not get RSS feed. StatusCode: {rssFeedResponse.StatusCode}");
+                return null;
+            }
+
+            var rssFeedXml = await rssFeedResponse.Content.ReadAsStreamAsync();
+            var rssFeed = (RssRoot?)RssSerializer.Deserialize(rssFeedXml);
+            var latestSongRss = rssFeed?.Channel?.Items?.FirstOrDefault();
+            if (latestSongRss?.Link == null)
+            {
+                Console.WriteLine("Error: Could not read latest song number from RSS, invalid format");
+                return null;
+            }
+
+            var latestSongNumberString = Regex.Match(latestSongRss.Link, @"\d+").Value; // Extract song number from URL
+            var latestSongNumber = int.Parse(latestSongNumberString);
+            return latestSongNumber;
+        }
+
+        private static async Task<int> DownloadSongs(int fromSongNr, int toSongNr, string outputPath)
+        {
+            var nextDownloadNumber = fromSongNr;
+
+            // Begin downloading from the given remix number, and continue until we have reached the latest remix
+            var currentAttemptNumber = fromSongNr;
+            while (currentAttemptNumber <= toSongNr)
             {
                 Console.Write($"{currentAttemptNumber} ");
                 var success = false;
 
                 // Read the OCRemix details page, to get all possible download links
-                var remixPageUrl = string.Format(settings.DownloadUrl, currentAttemptNumber); // The remix page URL format is taken from settings.json
+                var remixPageUrl = string.Format(DownloadUrl, currentAttemptNumber);
                 var pageResponse = await DownloadClient.GetAsync(remixPageUrl);
                 if (pageResponse.IsSuccessStatusCode)
                 {
@@ -151,7 +234,7 @@ namespace OCRemixDownloader
                             // Download was successful, get bytes
                             var downloadBytes = await downloadResponse.Content.ReadAsByteArrayAsync();
                             Console.WriteLine($"downloadok {downloadUrl}");
-                            
+
                             // Get filename from URL
                             var uri = new Uri(downloadUrl);
                             var fileNameUrlEncoded = uri.Segments.Last();
@@ -159,7 +242,7 @@ namespace OCRemixDownloader
 
                             // Store remix bytes to file on disk
                             var filePath = Path.Combine(outputPath, fileName);
-                            File.WriteAllBytes(filePath, downloadBytes);
+                            await File.WriteAllBytesAsync(filePath, downloadBytes);
                             success = true;
                             break; // Stop trying other mirrors
                         }
@@ -183,39 +266,11 @@ namespace OCRemixDownloader
                 currentAttemptNumber++;
                 if (success)
                 {
-                    consecutiveErrors = 0; // Reset error counter on success
                     nextDownloadNumber = currentAttemptNumber; // Store the next remix to download in settings
                 }
-                else
-                {
-                    consecutiveErrors++;
-                }
             }
 
-            Console.WriteLine($"Too many consecutive errors, will start downloading from {nextDownloadNumber} next time");
-
-            if (configPath != null)
-            {
-                // Save settings for next run
-                settings.NextDownloadNumber = nextDownloadNumber;
-
-                var serializerOptions = new JsonSerializerOptions
-                {
-                    IgnoreNullValues = true,
-                    WriteIndented = true
-                };
-                settingsContent = JsonSerializer.Serialize(settings, serializerOptions);
-
-                try
-                {
-                    File.WriteAllText(configPath, settingsContent);
-                }
-                catch
-                {
-                    Console.WriteLine($"Error: Could not save settings to config path, check permissions: {configPath}");
-                    return;
-                }
-            }
+            return nextDownloadNumber;
         }
     }
 }
