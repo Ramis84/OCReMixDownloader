@@ -2,7 +2,7 @@
  A downloader for OverClocked ReMix (OCRemix) songs
 
 ## Overview
-OCRemixDownloader is a cross-platform command line tool to download the latest OCRemix (OverClocked ReMix) songs from the official website. The tool will remember the last downloaded song, and continue from that at next run. It has been developed using .Net Core in Visual Studio 2019 (C#).
+OCRemixDownloader is a cross-platform command line tool to download the latest OCRemix (OverClocked ReMix) songs from the official website. The tool will remember the last downloaded song, and continue from that at next run. It has been developed using .Net 5 in Visual Studio 2019 (C#).
 
 ## Using OCRemixDownloader
 ```
