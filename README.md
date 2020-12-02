@@ -21,12 +21,12 @@ On first run (when the specified config file does not exist yet or does not cont
 
 ### Prerequisites
 
-Before installing OCRemixDownloader, make sure that the latest .Net Core Runtime (minimum 3.1) is installed (available on Windows/Linux & MacOS)
+Before installing OCRemixDownloader, make sure that the latest .Net Runtime (minimum 5.0) is installed (available on Windows/Linux & MacOS)
 - https://dotnet.microsoft.com/download
 
 ### Installing as a NuGet package
 
-OCRemixDownloader is available as a .Net Core tool (supported by Windows, MacOS, Linux), that can be downloaded and used globally with the command line.
+OCRemixDownloader is available as a .Net Tool (supported by Windows, MacOS, Linux), that can be downloaded and used globally with the command line.
 
 1. In windows, open a Command Prompt or PowerShell window and execute:
 
