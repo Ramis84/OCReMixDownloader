@@ -14,6 +14,7 @@ namespace OCRemixDownloader
         private static readonly HttpClient DownloadClient = new HttpClient();
         private static readonly XmlSerializer RssSerializer = new XmlSerializer(typeof(RssRoot));
         private static readonly Regex DownloadLinkRegex = new Regex("<a href=\"(?<href>[^\"]+)\">Download from");
+        private const string RssUrl = "https://ocremix.org/feeds/ten20/";
         private const string DownloadUrl = "http://ocremix.org/remix/OCR{0:D5}";
 
         static async Task Main(string[] args)
@@ -178,7 +179,7 @@ namespace OCRemixDownloader
         private static async Task<int?> GetLatestSongNumberFromRss()
         {
             // Get RSS feed, to read latest song number
-            var rssFeedResponse = await DownloadClient.GetAsync("https://ocremix.org/feeds/ten20/");
+            var rssFeedResponse = await DownloadClient.GetAsync(RssUrl);
             if (!rssFeedResponse.IsSuccessStatusCode)
             {
                 Console.WriteLine($"Error: Could not get RSS feed. StatusCode: {rssFeedResponse.StatusCode}");

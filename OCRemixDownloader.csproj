@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -7,7 +7,7 @@
     <Company></Company>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <Product />
-    <Description>A simple OCRemix (OverClocked ReMix) song downloader console application for .Net 5</Description>
+    <Description>A simple cross-platform OCRemix (OverClocked ReMix) song downloader console application for .Net 5</Description>
     <Nullable>enable</Nullable>
   </PropertyGroup>
   
