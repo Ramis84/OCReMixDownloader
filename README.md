@@ -11,8 +11,10 @@ A cross-platform command line tool/script to download the latest OCRemix (OverCl
 Usage:
   ocremixdownloader [options]
 Options:
-  --output <PATH>    The folder where songs will be stored. (Required)
-  --config <PATH>    The file (json) where settings and last downloaded song number will be stored. Will be created if it does not exist. (Optional)
+  --output <PATH>    (Required) The folder where songs will be stored.
+  --config <PATH>    (Optional) The file (json) where settings and last downloaded song number will be stored. Will be created if it does not exist.
+  --threads <COUNT>  (Optional) Number of concurrent downloads (default: 1).
+  --includeTorrents  (Optional) Downloads torrents files as well, both Collections and Albums (only the .torrent, needs to need added to torrent client manually).
 Example:
   ocremixdownloader --config "C:/Files/settings.json" --output "C:/Download/"
 ```
