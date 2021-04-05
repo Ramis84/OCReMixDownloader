@@ -34,7 +34,7 @@ namespace OCRemixDownloader
                 Console.WriteLine("Usage:");
                 Console.WriteLine("  ocremixdownloader [options]");
                 Console.WriteLine("Options:");
-                Console.WriteLine("  --output <PATH>    (Optional) The folder where songs will be stored (default: The current folder).");
+                Console.WriteLine("  --output <PATH>    (Optional) The folder where songs will be stored (default: The current folder/working directory).");
                 Console.WriteLine("  --config <PATH>    (Optional) The file (json) where settings and last downloaded song number will be stored. Will be created if it does not exist.");
                 Console.WriteLine("  --threads <COUNT>  (Optional) Number of concurrent downloads (default: 1).");
                 Console.WriteLine("  --includeTorrents  (Optional) Downloads torrents files as well, both Collections and Albums (only the .torrent, needs to be added to torrent client manually).");
@@ -50,8 +50,7 @@ namespace OCRemixDownloader
             // Check required parameters
             if (parameters.OutputPath == null)
             {
-                Console.WriteLine("Missing parameter: --output");
-                return;
+                parameters.OutputPath = ".";
             }
             if (!Directory.Exists(parameters.OutputPath))
             {
