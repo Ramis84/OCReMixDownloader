@@ -2,7 +2,7 @@
 
 <a href="https://ocremix.org/"><img align="right" src="https://ocremix.org/images/logos/ocremix_88x31_icon.png" alt="OverClocked ReMix - Video Game Music Community" title="OverClocked ReMix - Video Game Music Community" /></a>
 
-A cross-platform command line tool/script to download the latest OCRemix (OverClocked ReMix) songs from the [official website](https://ocremix.org/). The tool will (optionally) remember the last downloaded song, and continue from that at next run.
+A cross-platform command line tool/script to download the latest OCRemix (OverClocked ReMix) songs from the [official website](https://ocremix.org/). The tool will (optionally) remember the last downloaded song, and continue from that at next run. Visit the [GitHub repository](https://github.com/Ramis84/OCRemixDownloader) for source code, and to contribute.
 
 **NOTE:** If you want to download the entire back catalogue of songs, please check the [torrent page](https://ocremix.org/torrents) at ocremix instead to save on time/bandwidth, and continue from there. 
 
@@ -14,7 +14,7 @@ Options:
   --output <PATH>    (Required) The folder where songs will be stored.
   --config <PATH>    (Optional) The file (json) where settings and last downloaded song number will be stored. Will be created if it does not exist.
   --threads <COUNT>  (Optional) Number of concurrent downloads (default: 1).
-  --includeTorrents  (Optional) Downloads torrents files as well, both Collections and Albums (only the .torrent, needs to need added to torrent client manually).
+  --includeTorrents  (Optional) Downloads torrents files as well, both Collections and Albums (only the .torrent, needs to be added to torrent client manually).
 Example:
   ocremixdownloader --config "C:/Files/settings.json" --output "C:/Download/"
 ```
