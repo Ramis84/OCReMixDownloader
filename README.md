@@ -6,6 +6,8 @@ A cross-platform command line tool/script to download the latest OCRemix (OverCl
 
 **NOTE:** If you want to download the entire back catalogue of songs, please check the [torrent page](https://ocremix.org/torrents) at ocremix instead to save on time/bandwidth, and continue from there. 
 
+![Screenshot of OCRemixDownloader](https://ramis84.github.io/OCRemixDownloader/assets/screenshot1.png "Screenshot of OCRemixDownloader")
+
 ## Using OCRemixDownloader
 ```
 Usage:
