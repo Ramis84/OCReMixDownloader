@@ -54,7 +54,7 @@ You may also download the latest binaries from the [releases page](https://githu
 
 ### Run/compile from source
 
-The application has been developed using .Net 5 (C#), and can be compiled/run using Visual Studio Code or just the .Net CLI (included in the [.Net 5.0 SDK](https://dotnet.microsoft.com/download)). Download the repository and execute the terminal command `dotnet run` to run from source, or `dotnet build` to build binaries.
+The application has been developed using .Net 5 (C#), and can be compiled/run using Visual Studio Code or just the .Net CLI (included in the [.Net 5.0 SDK](https://dotnet.microsoft.com/download)). Download the [GitHub repository](https://github.com/Ramis84/OCRemixDownloader) and execute the terminal command `dotnet run` to run from source, or `dotnet build` to build binaries.
 
 ## Automation / scheduling
 
