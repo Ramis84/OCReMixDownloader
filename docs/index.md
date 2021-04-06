@@ -1,10 +1,10 @@
-<a href="https://ocremix.org/"><img align="right" src="https://ramis84.github.io/OCRemixDownloader/assets/ocremix_88x31_icon.png" alt="OverClocked ReMix - Video Game Music Community" title="OverClocked ReMix - Video Game Music Community" /></a>
+<a href="https://ocremix.org/"><img align="right" src="https://ramis84.github.io/OCRemixDownloader/ocremix_88x31_icon.png" alt="OverClocked ReMix - Video Game Music Community" title="OverClocked ReMix - Video Game Music Community" /></a>
 
 The tool will (optionally) remember the last downloaded song, and continue from that at next run. Visit the [GitHub repository](https://github.com/Ramis84/OCRemixDownloader) for source code, and to contribute.
 
 **NOTE:** If you want to download the entire back catalogue of songs, please check the [torrent page](https://ocremix.org/torrents) at ocremix instead to save on time/bandwidth, and continue from there. 
 
-![Screenshot of OCRemixDownloader](https://ramis84.github.io/OCRemixDownloader/assets/screenshot1.png "Screenshot of OCRemixDownloader")
+![Screenshot of OCRemixDownloader](https://ramis84.github.io/OCRemixDownloader/screenshot1.png "Screenshot of OCRemixDownloader")
 
 ## Using OCRemixDownloader
 ```
