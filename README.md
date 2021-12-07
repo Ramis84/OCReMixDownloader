@@ -33,7 +33,7 @@ Before installing OCRemixDownloader, make sure that the latest [.Net Runtime (mi
    dotnet --version
    ```
 
-### Installing as a NuGet package
+### Installing
 
 OCRemixDownloader is available as a .Net Tool (supported by Windows, macOS, Linux), that can be downloaded and used globally with the command line.
 
