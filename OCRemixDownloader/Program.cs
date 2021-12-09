@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -29,7 +30,9 @@ namespace OCRemixDownloader
             if (args.Length == 0)
             {
                 // Print usage information
-                Console.WriteLine("ocremixdownloader 1.0.4:");
+                var version = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+
+                Console.WriteLine($"ocremixdownloader {version}:");
                 Console.WriteLine("  Downloads OCRemix songs to a specified folder, remembering the last downloaded song.");
                 Console.WriteLine("Usage:");
                 Console.WriteLine("  ocremixdownloader [options]");
