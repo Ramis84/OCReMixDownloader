@@ -20,9 +20,9 @@ namespace OCRemixDownloader
         private static readonly XmlSerializer RssSerializer = new XmlSerializer(typeof(RssRoot));
         private static readonly Regex DownloadLinkRegex = new Regex("<a href=\"(?<href>[^\"]+)\">Download from");
         private const string RssUrl = "https://ocremix.org/feeds/ten20/";
-        private const string DownloadUrl = "http://ocremix.org/remix/OCR{0:D5}";
-        private const string TorrentBaseUrl = "http://bt.ocremix.org/";
-        private const string TorrentLinksPageUrl = "http://bt.ocremix.org/index.php?order=date&sort=descending";
+        private const string DownloadUrl = "https://ocremix.org/remix/OCR{0:D5}";
+        private const string TorrentBaseUrl = "https://bt.ocremix.org/";
+        private const string TorrentLinksPageUrl = "https://bt.ocremix.org/index.php?order=date&sort=descending";
 
         static async Task Main(string[] args)
         {
