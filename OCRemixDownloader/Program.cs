@@ -17,13 +17,19 @@ namespace OCRemixDownloader
 {
     class Program
     {
-        private static readonly HttpClient DownloadClient = new HttpClient();
         private static readonly XmlSerializer RssSerializer = new XmlSerializer(typeof(RssRoot));
         private static readonly Regex DownloadLinkRegex = new Regex("<a href=\"(?<href>[^\"]+)\">Download from");
         private const string RssUrl = "https://ocremix.org/feeds/ten20/";
         private const string DownloadUrl = "https://ocremix.org/remix/OCR{0:D5}";
         private const string TorrentBaseUrl = "https://bt.ocremix.org/";
         private const string TorrentLinksPageUrl = "https://bt.ocremix.org/index.php?order=date&sort=descending";
+
+        private static readonly HttpClient DownloadClient =
+            new HttpClient(
+                new HttpClientHandler
+                {
+                    AllowAutoRedirect = true
+                });
 
         static async Task Main(string[] args)
         {
