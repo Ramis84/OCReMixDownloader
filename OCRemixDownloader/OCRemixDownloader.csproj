@@ -21,7 +21,7 @@
   
   <PropertyGroup>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>1.0.6</Version>
+    <Version>1.0.7</Version>
     <AssemblyName>ocremixdownloader</AssemblyName>
     <PackageProjectUrl>https://github.com/Ramis84/OCRemixDownloader</PackageProjectUrl>
   </PropertyGroup>
