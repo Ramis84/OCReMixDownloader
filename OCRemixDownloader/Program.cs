@@ -196,7 +196,7 @@ namespace OCRemixDownloader
         {
             var serializerOptions = new JsonSerializerOptions
             {
-                IgnoreNullValues = true,
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
                 WriteIndented = true
             };
             var settingsContent = JsonSerializer.Serialize(settings, serializerOptions);

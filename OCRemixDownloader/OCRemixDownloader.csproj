@@ -7,7 +7,7 @@
     <Company></Company>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <Product />
-    <Description>A simple cross-platform OCRemix (OverClocked ReMix) song downloader console application for .Net 5</Description>
+    <Description>A simple cross-platform OCRemix (OverClocked ReMix) song downloader console application.</Description>
     <Nullable>enable</Nullable>
   </PropertyGroup>
   
