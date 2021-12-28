@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 using System.Xml.Serialization;
 using HtmlAgilityPack;
 
-namespace OCRemixDownloader
+namespace OCReMixDownloader
 {
     class Program
     {
@@ -39,7 +39,7 @@ namespace OCRemixDownloader
                 var version = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
 
                 Console.WriteLine($"ocremixdownloader {version}:");
-                Console.WriteLine("  Downloads OCRemix songs to a specified folder, remembering the last downloaded song.");
+                Console.WriteLine("  Downloads OCReMix songs to a specified folder, remembering the last downloaded song.");
                 Console.WriteLine("Usage:");
                 Console.WriteLine("  ocremixdownloader [options]");
                 Console.WriteLine("Options:");
@@ -81,7 +81,7 @@ namespace OCRemixDownloader
                 return;
             }
 
-            // Read the starting OCRemix song number from settings if possible, otherwise let user type in
+            // Read the starting OCReMix song number from settings if possible, otherwise let user type in
             if (!settings.NextDownloadNumber.HasValue)
             {
                 // Let user decide on first release number, since missing in settings
@@ -128,7 +128,7 @@ namespace OCRemixDownloader
                 {
                     Console.WriteLine($"There are {latestSongNumber - settings.NextDownloadNumber + 1} new ReMix(es) to attempt to download");
 
-                    // Begin downloading from the given remix number, and continue until we have reached the latest remix
+                    // Begin downloading from the given ReMix number, and continue until we have reached the latest one
                     settings.NextDownloadNumber = await DownloadSongs(settings.NextDownloadNumber.Value, latestSongNumber.Value, parameters.OutputPath, parameters.Threads);
                 }
             }
@@ -248,7 +248,7 @@ namespace OCRemixDownloader
                 return fromSongNr;
             }
 
-            // Begin downloading from the given remix number, and continue until we have reached the latest remix
+            // Begin downloading from the given ReMix number, and continue until we have reached the latest one
             var songNumbersQueue = new ConcurrentQueue<int>(Enumerable.Range(fromSongNr, toSongNr - fromSongNr + 1));
             var successfullyDownloadedSongNrs = new ConcurrentBag<int>();
             var threadNumbers = Enumerable.Range(1, threadCount);
@@ -259,7 +259,7 @@ namespace OCRemixDownloader
                     {
                         var success = false;
 
-                        // Read the OCRemix details page, to get all possible download links
+                        // Read the OCReMix details page, to get all possible download links
                         var remixPageUrl = string.Format(DownloadUrl, songNr);
                         var pageResponse = await DownloadClient.GetAsync(remixPageUrl);
                         if (pageResponse.IsSuccessStatusCode)
@@ -277,7 +277,7 @@ namespace OCRemixDownloader
                                     System.Web.HttpUtility.HtmlDecode(
                                         downloadUrlHtmlEncoded); // Decode HTML encoded characters, like "&amp;" to "&"
 
-                                // Try to download the remix
+                                // Try to download the ReMix
                                 var downloadResponse = await DownloadClient.GetAsync(downloadUrl);
                                 if (downloadResponse.IsSuccessStatusCode)
                                 {
@@ -291,7 +291,7 @@ namespace OCRemixDownloader
                                         Uri.UnescapeDataString(
                                             fileNameUrlEncoded); // Decode URL escaped characters, like %20 to space
 
-                                    // Store remix bytes to file on disk
+                                    // Store ReMix bytes to file on disk
                                     var filePath = Path.Combine(outputPath, fileName);
                                     await File.WriteAllBytesAsync(filePath, downloadBytes);
                                     success = true;
@@ -307,21 +307,21 @@ namespace OCRemixDownloader
                             if (!success)
                             {
                                 // All download links failed, skip
-                                Console.WriteLine($"{songNr} Error: All download links failed, skipping remix");
+                                Console.WriteLine($"{songNr} Error: All download links failed, skipping ReMix");
                             }
                         }
                         else
                         {
-                            // Could not get the OCRemix details page for this remix number, skipping to next
+                            // Could not get the OCReMix details page for this song number, skipping to next
                             Console.WriteLine(
-                                $"{songNr} Error: ReMix page could not be loaded. Skipping remix. StatusCode: {(int) pageResponse.StatusCode}");
+                                $"{songNr} Error: ReMix page could not be loaded. Skipping download. StatusCode: {(int) pageResponse.StatusCode}");
                         }
 
                         successfullyDownloadedSongNrs.Add(songNr);
                     }
                 }));
 
-            // Store the next remix to download in settings
+            // Store the next song number to download in settings
             var nextDownloadNr = successfullyDownloadedSongNrs.Count > 0
                 ? successfullyDownloadedSongNrs.Max() + 1
                 : fromSongNr;

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace OCRemixDownloader
+namespace OCReMixDownloader
 {
     public class SettingsModel
     {

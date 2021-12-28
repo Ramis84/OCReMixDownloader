@@ -7,7 +7,7 @@
     <Company></Company>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <Product />
-    <Description>A simple cross-platform OCRemix (OverClocked ReMix) song downloader console application.</Description>
+    <Description>A simple cross-platform OCReMix (OverClocked ReMix) song downloader console application.</Description>
     <Nullable>enable</Nullable>
   </PropertyGroup>
   
@@ -23,7 +23,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Version>1.0.7</Version>
     <AssemblyName>ocremixdownloader</AssemblyName>
-    <PackageProjectUrl>https://github.com/Ramis84/OCRemixDownloader</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/Ramis84/OCReMixDownloader</PackageProjectUrl>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

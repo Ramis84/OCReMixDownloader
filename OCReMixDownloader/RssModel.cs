@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Xml.Serialization;
 
-namespace OCRemixDownloader
+namespace OCReMixDownloader
 {
     /// <summary>
     /// Model for RSS 2.0 for XML deserialization

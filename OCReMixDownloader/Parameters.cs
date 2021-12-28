@@ -1,4 +1,4 @@
-﻿namespace OCRemixDownloader
+﻿namespace OCReMixDownloader
 {
     public class Parameters
     {
