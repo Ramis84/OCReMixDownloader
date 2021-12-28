@@ -2,7 +2,7 @@
 
 The tool will (optionally) remember the last downloaded song, and continue from that at next run. Visit the [GitHub repository](https://github.com/Ramis84/OCReMixDownloader) for source code, and to contribute.
 
-**NOTE:** If you want to download the entire back catalogue of songs, please check the [torrent page](https://ocremix.org/torrents) at OCReMix instead to save on time/bandwidth, and continue from there. 
+**NOTE:** If you want to download the entire back catalogue of songs, please check the [torrent page](https://ocremix.org/torrents) at OC ReMix instead to save on time/bandwidth, and continue from there. 
 
 ![Screenshot of OCReMixDownloader](https://ramis84.github.io/OCReMixDownloader/screenshot1.png "Screenshot of OCReMixDownloader")
 
