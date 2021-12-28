@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Reflection;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -18,6 +19,7 @@ namespace OCReMixDownloader
     class Program
     {
         private static readonly XmlSerializer RssSerializer = new XmlSerializer(typeof(RssRoot));
+        private static readonly Regex Md5HashRegex = new Regex("<strong>MD5 Checksum: </strong>(?<md5>[^\"]+)</li>");
         private static readonly Regex DownloadLinkRegex = new Regex("<a href=\"(?<href>[^\"]+)\">Download from");
         private const string RssUrl = "https://ocremix.org/feeds/ten20/";
         private const string DownloadUrl = "https://ocremix.org/remix/OCR{0:D5}";
@@ -247,6 +249,8 @@ namespace OCReMixDownloader
             {
                 return fromSongNr;
             }
+            
+            using var md5 = System.Security.Cryptography.MD5.Create();
 
             // Begin downloading from the given ReMix number, and continue until we have reached the latest one
             var songNumbersQueue = new ConcurrentQueue<int>(Enumerable.Range(fromSongNr, toSongNr - fromSongNr + 1));
@@ -265,14 +269,23 @@ namespace OCReMixDownloader
                         if (pageResponse.IsSuccessStatusCode)
                         {
                             var htmlContent = await pageResponse.Content.ReadAsStringAsync();
+                            var md5Hash = Md5HashRegex.Match(htmlContent).Groups["md5"].Value.ToLower();
+                            if (string.IsNullOrWhiteSpace(md5Hash))
+                            {
+                                Console.WriteLine($"{songNr} Warning: MD5 hash was not found on page. Skipping verification");
+                            }
 
                             /* Try using the download links from HTML-page, look for links with text "Download from".
-                               Try all mirrors until we find a working one */
-                            foreach (Match? match in DownloadLinkRegex.Matches(htmlContent))
+                               Try all mirrors until we find a working one
+                               Shuffle the order mirrors are tried, to distribute load on all mirrors */
+                            var downloadMirrorsMatches = DownloadLinkRegex.Matches(htmlContent)
+                                .Cast<Match>()
+                                .Shuffle();
+                            foreach (var downloadMirrorsMatch in downloadMirrorsMatches)
                             {
-                                if (match == null) continue;
+                                if (downloadMirrorsMatch == null) continue;
 
-                                var downloadUrlHtmlEncoded = match.Groups["href"].Value; // Get url portion from link
+                                var downloadUrlHtmlEncoded = downloadMirrorsMatch.Groups["href"].Value; // Get url portion from link
                                 var downloadUrl =
                                     System.Web.HttpUtility.HtmlDecode(
                                         downloadUrlHtmlEncoded); // Decode HTML encoded characters, like "&amp;" to "&"
@@ -283,6 +296,19 @@ namespace OCReMixDownloader
                                 {
                                     // Download was successful, get bytes
                                     var downloadBytes = await downloadResponse.Content.ReadAsByteArrayAsync();
+
+                                    // Verify MD5 hash of file with hash on page
+                                    if (!string.IsNullOrWhiteSpace(md5Hash))
+                                    {
+                                        var md5HashComputedBytes = md5.ComputeHash(downloadBytes);
+                                        var md5HashComputed = Convert.ToHexString(md5HashComputedBytes).ToLower();
+                                        if (md5HashComputed != md5Hash)
+                                        {
+                                            // MD5 not matching, try next mirror
+                                            Console.WriteLine($"{songNr} Warning: MD5 hash ({md5HashComputed}) not matching reference value ({md5Hash}) at: {downloadUrl}");
+                                            continue;
+                                        }
+                                    }
 
                                     // Get filename from URL
                                     var uri = new Uri(downloadUrl);
