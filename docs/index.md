@@ -1,10 +1,18 @@
 <a href="https://ocremix.org/"><img align="right" src="https://ramis84.github.io/OCReMixDownloader/ocremix_88x31_icon.png" alt="OverClocked ReMix - Video Game Music Community" title="OverClocked ReMix - Video Game Music Community" /></a>
 
-The tool will (optionally) remember the last downloaded song, and continue from that at next run. Visit the [GitHub repository](https://github.com/Ramis84/OCReMixDownloader) for source code, and to contribute.
+The tool will (optionally) remember the last downloaded ReMix, and continues from there at next run. Visit the [GitHub repository](https://github.com/Ramis84/OCReMixDownloader) for source code, and to contribute.
 
 **NOTE:** If you want to download the entire back catalogue of songs, please check the [torrent page](https://ocremix.org/torrents) at OC ReMix instead to save on time/bandwidth, and continue from there. 
 
 ![Screenshot of OCReMixDownloader](https://ramis84.github.io/OCReMixDownloader/screenshot1.png "Screenshot of OCReMixDownloader")
+
+## Features
+1. Verifies the computed MD5-hash of each downloaded song with the hash taken from the OC ReMix website, and will download another mirror if the hash does not match.
+1. (Optionally) remembers the last downloaded ReMix, and continues from there at next run.
+1. (Optionally) multithreaded/concurrent downloads (limited by parameter).
+1. (Optionally) downloads the latest .torrent-files as well (needs to manually be added to torrent client afterwards).
+1. Will distribute load on all available mirrors.
+1. In case of any problems downloading a ReMix, individual log files for each song will be written to the output folder.
 
 ## Using OCReMixDownloader
 ```
