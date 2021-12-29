@@ -18,7 +18,7 @@ namespace OCReMixDownloader
     class Program
     {
         private static readonly XmlSerializer RssSerializer = new XmlSerializer(typeof(RssRoot));
-        private static readonly Regex Md5HashRegex = new Regex("<strong>MD5 Checksum: </strong>(?<md5>[^\"]+)</li>");
+        private static readonly Regex Md5HashRegex = new Regex("<strong>MD5 Checksum: </strong>(?<md5>[a-fA-F0-9]+)</li>");
         private static readonly Regex DownloadLinkRegex = new Regex("<a href=\"(?<href>[^\"]+)\">Download from");
         private const string RssUrl = "https://ocremix.org/feeds/ten20/";
         private const string DownloadUrl = "https://ocremix.org/remix/OCR{0:D5}";
@@ -278,7 +278,7 @@ namespace OCReMixDownloader
                             songLogMessages.Add(pageSuccessMessage);
 
                             var htmlContent = await pageResponse.Content.ReadAsStringAsync();
-                            var md5Hash = Md5HashRegex.Match(htmlContent).Groups["md5"].Value.ToLower();
+                            var md5Hash = Md5HashRegex.Match(htmlContent).Groups["md5"].Value.Trim().ToLower();
                             if (string.IsNullOrWhiteSpace(md5Hash))
                             {
                                 var warningMessage = $"Warning: MD5 hash was not found on page ({remixPageUrl}). Skipping verification";
@@ -342,7 +342,7 @@ namespace OCReMixDownloader
                                     // Decrease the number of active request for this host by one, and increase completed by one instead
                                     statisticsByHostname.AddOrUpdate(
                                         hostName,
-                                        new HostStatistics(1, 0),
+                                        new HostStatistics(0, 1),
                                         (_, oldStatistics) => oldStatistics with
                                         {
                                             HostActiveRequestCount = oldStatistics.HostActiveRequestCount - 1,
