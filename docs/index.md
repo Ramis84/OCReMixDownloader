@@ -19,8 +19,8 @@ The tool will (optionally) remember the last downloaded ReMix, and continues fro
 Usage:
   ocremixdownloader [options]
 Options:
-  --output <PATH>    (Required) The folder where songs will be stored.
-  --config <PATH>    (Optional) The file (json) where settings and last downloaded song number will be stored. Will be created if it does not exist.
+  --output <PATH>    (Optional) The path (absolute/relative) where songs will be stored (default: The current folder/working directory).
+  --config <PATH>    (Optional) The path (absolute/relative) of file (json) where settings and last downloaded song number will be stored. Will be created if it does not exist.
   --threads <COUNT>  (Optional) Number of concurrent downloads (default: 1).
   --includeTorrents  (Optional) Downloads torrents files as well, both Collections and Albums (only the .torrent, needs to be added to torrent client manually).
 Example:
