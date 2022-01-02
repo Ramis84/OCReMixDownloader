@@ -242,7 +242,7 @@ namespace OCReMixDownloader
             return latestSongNumber;
         }
 
-        private record HostStatistics(int HostActiveRequestCount, int CompletedRequestCount);
+        private record HostStatistics(int HostActiveRequestCount, int CompletedRequestCount, DateTime LastStart);
 
         private static async Task<int> DownloadSongs(int fromSongNr, int toSongNr, string outputPath, int threadCount)
         {
@@ -299,10 +299,11 @@ namespace OCReMixDownloader
                                 .Select(x => new
                                 {
                                     Uri = x,
-                                    HostStatistics = statisticsByHostname.TryGetValue(x.Host, out var hostStatistics) ? hostStatistics : new HostStatistics(0, 0)
+                                    HostStatistics = statisticsByHostname.TryGetValue(x.Host, out var hostStatistics) ? hostStatistics : new HostStatistics(0, 0, DateTime.MinValue)
                                 })
                                 .OrderBy(x => x.HostStatistics.HostActiveRequestCount) // Prefer hosts with least number of active requests
                                 .ThenBy(x => x.HostStatistics.CompletedRequestCount) // For hosts with same number of active requests, prefer hosts with least number of completed requests
+                                .ThenBy(x => x.HostStatistics.LastStart) // Prefer hosts that we called the longest time ago
                                 .Select(x => x.Uri)
                                 .ToList();
 
@@ -324,7 +325,7 @@ namespace OCReMixDownloader
                                 var hostName = songDownloadMirrorUri.Host;
                                 statisticsByHostname.AddOrUpdate(
                                     hostName,
-                                    new HostStatistics(1, 0),
+                                    new HostStatistics(1, 0, DateTime.Now),
                                     (_, oldStatistics) => oldStatistics with
                                     {
                                         HostActiveRequestCount = oldStatistics.HostActiveRequestCount + 1
@@ -342,7 +343,7 @@ namespace OCReMixDownloader
                                     // Decrease the number of active request for this host by one, and increase completed by one instead
                                     statisticsByHostname.AddOrUpdate(
                                         hostName,
-                                        new HostStatistics(0, 1),
+                                        new HostStatistics(0, 1, DateTime.Now),
                                         (_, oldStatistics) => oldStatistics with
                                         {
                                             HostActiveRequestCount = oldStatistics.HostActiveRequestCount - 1,
