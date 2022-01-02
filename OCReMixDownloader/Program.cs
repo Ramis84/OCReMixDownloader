@@ -290,6 +290,7 @@ namespace OCReMixDownloader
             var songNumbersQueue = new ConcurrentQueue<int>(Enumerable.Range(fromSongNr, toSongNr - fromSongNr + 1));
             var threadNumbers = Enumerable.Range(1, threadCount);
             await Task.WhenAll(threadNumbers
+                .Take(songNumbersQueue.Count) // To prevent creating unnecessary tasks
                 .Select(async threadNumber =>
                 {
                     while (songNumbersQueue.TryDequeue(out var songNr))
