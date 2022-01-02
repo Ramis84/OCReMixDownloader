@@ -130,7 +130,8 @@ namespace OCReMixDownloader
                     Console.WriteLine($"There are {latestSongNumber - settings.NextDownloadNumber + 1} new ReMix(es) to attempt to download");
 
                     // Begin downloading from the given ReMix number, and continue until we have reached the latest one
-                    settings.NextDownloadNumber = await DownloadSongs(settings.NextDownloadNumber.Value, latestSongNumber.Value, parameters.OutputPath, parameters.Threads);
+                    await DownloadSongs(settings.NextDownloadNumber.Value, latestSongNumber.Value, parameters.OutputPath, parameters.Threads);
+                    settings.NextDownloadNumber = latestSongNumber.Value + 1;
                 }
             }
 
@@ -244,11 +245,11 @@ namespace OCReMixDownloader
 
         private record HostStatistics(int HostActiveRequestCount, int CompletedRequestCount, DateTime LastStart);
 
-        private static async Task<int> DownloadSongs(int fromSongNr, int toSongNr, string outputPath, int threadCount)
+        private static async Task DownloadSongs(int fromSongNr, int toSongNr, string outputPath, int threadCount)
         {
             if (fromSongNr > toSongNr)
             {
-                return fromSongNr;
+                return;
             }
             
             using var md5 = System.Security.Cryptography.MD5.Create();
@@ -258,165 +259,165 @@ namespace OCReMixDownloader
 
             // Begin downloading from the given ReMix number, and continue until we have reached the latest one
             var songNumbersQueue = new ConcurrentQueue<int>(Enumerable.Range(fromSongNr, toSongNr - fromSongNr + 1));
-            var completedSongNrs = new ConcurrentBag<int>();
             var threadNumbers = Enumerable.Range(1, threadCount);
             await Task.WhenAll(threadNumbers
                 .Select(async threadNumber =>
                 {
                     while (songNumbersQueue.TryDequeue(out var songNr))
                     {
-                        var success = false;
-                        var songLogMessages = new List<string>();
-
-                        // Read the OCReMix details page, to get all possible download links
-                        var remixPageUrl = string.Format(DownloadUrl, songNr);
-                        var pageResponse = await DownloadClient.GetAsync(remixPageUrl);
-                        if (pageResponse.IsSuccessStatusCode)
-                        {
-                            // Log page success
-                            var pageSuccessMessage = $"ReMix page loaded successfully ({remixPageUrl})";
-                            songLogMessages.Add(pageSuccessMessage);
-
-                            var htmlContent = await pageResponse.Content.ReadAsStringAsync();
-                            var md5Hash = Md5HashRegex.Match(htmlContent).Groups["md5"].Value.Trim().ToLower();
-                            if (string.IsNullOrWhiteSpace(md5Hash))
-                            {
-                                var warningMessage = $"Warning: MD5 hash was not found on page ({remixPageUrl}). Skipping verification";
-                                songLogMessages.Add(warningMessage);
-                                Console.WriteLine($"{songNr} {warningMessage}");
-                            }
-
-                            /* Try using the download links from HTML-page, look for links with text "Download from".
-                               Try all mirrors until we find a working one
-                               Shuffle the order mirrors are tried, to distribute load on all mirrors */
-                            var songDownloadMirrorUris = DownloadLinkRegex.Matches(htmlContent)
-                                .Cast<Match>()
-                                .Where(x => x != null)
-                                .Select(x => x.Groups["href"].Value) // Get url portion from link
-                                .Select(x => System.Web.HttpUtility.HtmlDecode(x)) // Decode HTML encoded characters, like "&amp;" to "&"
-                                .Shuffle() // Randomize order of mirrors, to distribute load a bit
-                                .Select(x => new Uri(x))
-                                .Select(x => new
-                                {
-                                    Uri = x,
-                                    HostStatistics = statisticsByHostname.TryGetValue(x.Host, out var hostStatistics) ? hostStatistics : new HostStatistics(0, 0, DateTime.MinValue)
-                                })
-                                .OrderBy(x => x.HostStatistics.HostActiveRequestCount) // Prefer hosts with least number of active requests
-                                .ThenBy(x => x.HostStatistics.CompletedRequestCount) // For hosts with same number of active requests, prefer hosts with least number of completed requests
-                                .ThenBy(x => x.HostStatistics.LastStart) // Prefer hosts that we called the longest time ago
-                                .Select(x => x.Uri)
-                                .ToList();
-
-                            // Log number of mirrors
-                            var allMirrorHosts = songDownloadMirrorUris.Select(x => x.Host);
-                            var mirrorsCountMessage = $"{songDownloadMirrorUris.Count} download mirrors found on page ({string.Join(", ", allMirrorHosts)})";
-                            songLogMessages.Add(mirrorsCountMessage);
-
-                            foreach (var songDownloadMirrorUri in songDownloadMirrorUris)
-                            {
-                                // Get filename of mp3 from URL
-                                var songFileNameUrlEncoded = songDownloadMirrorUri.Segments.Last();
-                                var songFileName =
-                                    Uri.UnescapeDataString(
-                                        songFileNameUrlEncoded); // Decode URL escaped characters, like %20 to space
-
-                                // Request about to start.
-                                // Increase the number of active request for this host by one
-                                var hostName = songDownloadMirrorUri.Host;
-                                statisticsByHostname.AddOrUpdate(
-                                    hostName,
-                                    new HostStatistics(1, 0, DateTime.Now),
-                                    (_, oldStatistics) => oldStatistics with
-                                    {
-                                        HostActiveRequestCount = oldStatistics.HostActiveRequestCount + 1
-                                    });
-
-                                // Try to download the ReMix
-                                HttpResponseMessage downloadResponse;
-                                try
-                                {
-                                    downloadResponse = await DownloadClient.GetAsync(songDownloadMirrorUri);
-                                }
-                                finally
-                                {
-                                    // Request finished.
-                                    // Decrease the number of active request for this host by one, and increase completed by one instead
-                                    statisticsByHostname.AddOrUpdate(
-                                        hostName,
-                                        new HostStatistics(0, 1, DateTime.Now),
-                                        (_, oldStatistics) => oldStatistics with
-                                        {
-                                            HostActiveRequestCount = oldStatistics.HostActiveRequestCount - 1,
-                                            CompletedRequestCount = oldStatistics.CompletedRequestCount + 1
-                                        });
-                                }
-
-                                if (downloadResponse.IsSuccessStatusCode)
-                                {
-                                    // Download was successful, get bytes
-                                    var downloadBytes = await downloadResponse.Content.ReadAsByteArrayAsync();
-
-                                    // Verify MD5 hash of file with hash on page, if available
-                                    if (!string.IsNullOrWhiteSpace(md5Hash))
-                                    {
-                                        var md5HashComputedBytes = md5.ComputeHash(downloadBytes);
-                                        var md5HashComputed = Convert.ToHexString(md5HashComputedBytes).ToLower();
-                                        if (md5HashComputed != md5Hash)
-                                        {
-                                            // MD5 not matching, try next mirror
-                                            var warningMessage = $"Skipping mirror, MD5 hash failure: {songDownloadMirrorUri}, Computed: {md5HashComputed}, Reference: {md5Hash}";
-                                            songLogMessages.Add(warningMessage);
-                                            Console.WriteLine($"{songNr} {warningMessage}");
-                                            continue;
-                                        }
-                                    }
-
-                                    // Store ReMix bytes to file on disk
-                                    var filePath = Path.Combine(outputPath, songFileName);
-                                    await File.WriteAllBytesAsync(filePath, downloadBytes);
-                                    success = true;
-                                    Console.WriteLine($"{songNr} OK: {songDownloadMirrorUri}");
-                                    break; // Stop trying other mirrors
-                                }
-
-                                // Download failed, try next available mirror
-                                var downloadLinkFailedWarningMessage = $"Skipping mirror, download link failed: {songDownloadMirrorUri}, HTTP StatusCode: {(int)downloadResponse.StatusCode}";
-                                songLogMessages.Add(downloadLinkFailedWarningMessage);
-                                Console.WriteLine($"{songNr} {downloadLinkFailedWarningMessage}");
-                            }
-
-                            if (!success)
-                            {
-                                // All download links failed, skip
-                                var errorMessage = $"Failed: All download mirrors failed, skipping ReMix";
-                                songLogMessages.Add(errorMessage);
-                                Console.WriteLine($"{songNr} {errorMessage}");
-                            }
-                        }
-                        else
-                        {
-                            // Could not get the OCReMix details page for this song number, skipping to next
-                            var errorMessage = $"Failed: ReMix page could not be loaded ({remixPageUrl}), skipping ReMix. HTTP StatusCode: {(int)pageResponse.StatusCode}";
-                            songLogMessages.Add(errorMessage);
-                            Console.WriteLine($"{songNr} {errorMessage}");
-                        }
-
-                        if (!success)
-                        {
-                            // Write log file in output path for current song to indicate error
-                            var songLogFilePath = Path.Combine(outputPath, $"{songNr}_failure.log");
-                            await File.WriteAllLinesAsync(songLogFilePath, songLogMessages);
-                        }
-
-                        completedSongNrs.Add(songNr);
+                        await DownloadSong(songNr, outputPath, statisticsByHostname, md5);
                     }
                 }));
+        }
 
-            // Store the next song number to download in settings
-            var nextDownloadNr = completedSongNrs.Count > 0
-                ? completedSongNrs.Max() + 1
-                : fromSongNr;
-            return nextDownloadNr;
+        private static async Task DownloadSong(
+            int songNr,
+            string outputPath,
+            ConcurrentDictionary<string, HostStatistics> statisticsByHostname,
+            System.Security.Cryptography.MD5 md5)
+        {
+            var success = false;
+            var songLogMessages = new List<string>();
+
+            // Read the OCReMix details page, to get all possible download links
+            var remixPageUrl = string.Format(DownloadUrl, songNr);
+            var pageResponse = await DownloadClient.GetAsync(remixPageUrl);
+            if (pageResponse.IsSuccessStatusCode)
+            {
+                // Log page success
+                var pageSuccessMessage = $"ReMix page loaded successfully ({remixPageUrl})";
+                songLogMessages.Add(pageSuccessMessage);
+
+                var htmlContent = await pageResponse.Content.ReadAsStringAsync();
+                var md5Hash = Md5HashRegex.Match(htmlContent).Groups["md5"].Value.Trim().ToLower();
+                if (string.IsNullOrWhiteSpace(md5Hash))
+                {
+                    var warningMessage = $"Warning: MD5 hash was not found on page ({remixPageUrl}). Skipping verification";
+                    songLogMessages.Add(warningMessage);
+                    Console.WriteLine($"{songNr} {warningMessage}");
+                }
+
+                /* Try using the download links from HTML-page, look for links with text "Download from".
+                   Try all mirrors until we find a working one
+                   Shuffle the order mirrors are tried, to distribute load on all mirrors */
+                var songDownloadMirrorUris = DownloadLinkRegex.Matches(htmlContent)
+                    .Cast<Match>()
+                    .Where(x => x != null)
+                    .Select(x => x.Groups["href"].Value) // Get url portion from link
+                    .Select(x => System.Web.HttpUtility.HtmlDecode(x)) // Decode HTML encoded characters, like "&amp;" to "&"
+                    .Shuffle() // Randomize order of mirrors, to distribute load a bit
+                    .Select(x => new Uri(x))
+                    .Select(x => new
+                    {
+                        Uri = x,
+                        HostStatistics = statisticsByHostname.TryGetValue(x.Host, out var hostStatistics) ? hostStatistics : new HostStatistics(0, 0, DateTime.MinValue)
+                    })
+                    .OrderBy(x => x.HostStatistics.HostActiveRequestCount) // Prefer hosts with least number of active requests
+                    .ThenBy(x => x.HostStatistics.CompletedRequestCount) // For hosts with same number of active requests, prefer hosts with least number of completed requests
+                    .ThenBy(x => x.HostStatistics.LastStart) // Prefer hosts that we called the longest time ago
+                    .Select(x => x.Uri)
+                    .ToList();
+
+                // Log number of mirrors
+                var allMirrorHosts = songDownloadMirrorUris.Select(x => x.Host);
+                var mirrorsCountMessage = $"{songDownloadMirrorUris.Count} download mirrors found on page ({string.Join(", ", allMirrorHosts)})";
+                songLogMessages.Add(mirrorsCountMessage);
+
+                foreach (var songDownloadMirrorUri in songDownloadMirrorUris)
+                {
+                    // Get filename of mp3 from URL
+                    var songFileNameUrlEncoded = songDownloadMirrorUri.Segments.Last();
+                    var songFileName =
+                        Uri.UnescapeDataString(
+                            songFileNameUrlEncoded); // Decode URL escaped characters, like %20 to space
+
+                    // Request about to start.
+                    // Increase the number of active request for this host by one
+                    var hostName = songDownloadMirrorUri.Host;
+                    statisticsByHostname.AddOrUpdate(
+                        hostName,
+                        new HostStatistics(1, 0, DateTime.Now),
+                        (_, oldStatistics) => oldStatistics with
+                        {
+                            HostActiveRequestCount = oldStatistics.HostActiveRequestCount + 1
+                        });
+
+                    // Try to download the ReMix
+                    HttpResponseMessage downloadResponse;
+                    try
+                    {
+                        downloadResponse = await DownloadClient.GetAsync(songDownloadMirrorUri);
+                    }
+                    finally
+                    {
+                        // Request finished.
+                        // Decrease the number of active request for this host by one, and increase completed by one instead
+                        statisticsByHostname.AddOrUpdate(
+                            hostName,
+                            new HostStatistics(0, 1, DateTime.Now),
+                            (_, oldStatistics) => oldStatistics with
+                            {
+                                HostActiveRequestCount = oldStatistics.HostActiveRequestCount - 1,
+                                CompletedRequestCount = oldStatistics.CompletedRequestCount + 1
+                            });
+                    }
+
+                    if (downloadResponse.IsSuccessStatusCode)
+                    {
+                        // Download was successful, get bytes
+                        var downloadBytes = await downloadResponse.Content.ReadAsByteArrayAsync();
+
+                        // Verify MD5 hash of file with hash on page, if available
+                        if (!string.IsNullOrWhiteSpace(md5Hash))
+                        {
+                            var md5HashComputedBytes = md5.ComputeHash(downloadBytes);
+                            var md5HashComputed = Convert.ToHexString(md5HashComputedBytes).ToLower();
+                            if (md5HashComputed != md5Hash)
+                            {
+                                // MD5 not matching, try next mirror
+                                var warningMessage = $"Skipping mirror, MD5 hash failure: {songDownloadMirrorUri}, Computed: {md5HashComputed}, Reference: {md5Hash}";
+                                songLogMessages.Add(warningMessage);
+                                Console.WriteLine($"{songNr} {warningMessage}");
+                                continue;
+                            }
+                        }
+
+                        // Store ReMix bytes to file on disk
+                        var filePath = Path.Combine(outputPath, songFileName);
+                        await File.WriteAllBytesAsync(filePath, downloadBytes);
+                        success = true;
+                        Console.WriteLine($"{songNr} OK: {songDownloadMirrorUri}");
+                        break; // Stop trying other mirrors
+                    }
+
+                    // Download failed, try next available mirror
+                    var downloadLinkFailedWarningMessage = $"Skipping mirror, download link failed: {songDownloadMirrorUri}, HTTP StatusCode: {(int)downloadResponse.StatusCode}";
+                    songLogMessages.Add(downloadLinkFailedWarningMessage);
+                    Console.WriteLine($"{songNr} {downloadLinkFailedWarningMessage}");
+                }
+
+                if (!success)
+                {
+                    // All download links failed, skip
+                    var errorMessage = $"Failed: All download mirrors failed, skipping ReMix";
+                    songLogMessages.Add(errorMessage);
+                    Console.WriteLine($"{songNr} {errorMessage}");
+                }
+            }
+            else
+            {
+                // Could not get the OCReMix details page for this song number, skipping to next
+                var errorMessage = $"Failed: ReMix page could not be loaded ({remixPageUrl}), skipping ReMix. HTTP StatusCode: {(int)pageResponse.StatusCode}";
+                songLogMessages.Add(errorMessage);
+                Console.WriteLine($"{songNr} {errorMessage}");
+            }
+
+            if (!success)
+            {
+                // Write log file in output path for current song to indicate error
+                var songLogFilePath = Path.Combine(outputPath, $"{songNr}_failure.log");
+                await File.WriteAllLinesAsync(songLogFilePath, songLogMessages);
+            }
         }
 
         private class TorrentToDownload
