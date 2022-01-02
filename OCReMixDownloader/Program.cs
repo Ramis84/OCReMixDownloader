@@ -44,8 +44,11 @@ namespace OCReMixDownloader
                 Console.WriteLine("Usage:");
                 Console.WriteLine("  ocremixdownloader [options]");
                 Console.WriteLine("Options:");
+                Console.WriteLine("  (NOTE: At least one parameter are required to run.)");
                 Console.WriteLine("  --output <PATH>    (Optional) The path (absolute/relative) where songs will be stored (default: The current folder/working directory).");
                 Console.WriteLine("  --config <PATH>    (Optional) The path (absolute/relative) of file (json) where settings and last downloaded song number will be stored. Will be created if it does not exist.");
+                Console.WriteLine("  --from <SONG_NR>   (Optional) The first song nr to download. If not set, and not available in config file, user will be asked to input it during startup.");
+                Console.WriteLine("  --to <SONG_NR>     (Optional) The last song nr to download. If not set, all songs including the latest one will be downloaded.");
                 Console.WriteLine("  --threads <COUNT>  (Optional) Number of concurrent downloads (default: 1).");
                 Console.WriteLine("  --includeTorrents  (Optional) Downloads torrents files as well, both Collections and Albums (only the .torrent, needs to be added to torrent client manually).");
                 Console.WriteLine("Example:");
@@ -82,10 +85,14 @@ namespace OCReMixDownloader
                 return;
             }
 
-            // Read the starting OCReMix song number from settings if possible, otherwise let user type in
-            if (!settings.NextDownloadNumber.HasValue)
+            if (parameters.From.HasValue)
             {
-                // Let user decide on first release number, since missing in settings
+                // Parameter 'from' overrides stored next download number
+                settings.NextDownloadNumber = parameters.From.Value;
+            }
+            else if (!settings.NextDownloadNumber.HasValue)
+            {
+                // Let user decide on starting song number, since missing in settings
                 Console.Write("Please input OC ReMix song number to begin downloading from (e.g 3745): ");
                 var input = Console.ReadLine();
                 if (!int.TryParse(input, out var nextDownloadNumber))
@@ -121,17 +128,23 @@ namespace OCReMixDownloader
             var latestSongNumber = await GetLatestSongNumberFromRss();
             if (latestSongNumber.HasValue)
             {
-                if (latestSongNumber < settings.NextDownloadNumber)
+                var from = settings.NextDownloadNumber.Value;
+                var to =
+                    parameters.To.HasValue && parameters.To.Value < latestSongNumber
+                        ? parameters.To.Value
+                        : latestSongNumber.Value;
+
+                if (to < from)
                 {
-                    Console.WriteLine("There are no new ReMixes to download");
+                    Console.WriteLine("There are no ReMixes to download");
                 }
                 else
                 {
-                    Console.WriteLine($"There are {latestSongNumber - settings.NextDownloadNumber + 1} new ReMix(es) to attempt to download");
+                    Console.WriteLine($"There are {to - from + 1} ReMix(es) to attempt to download");
 
                     // Begin downloading from the given ReMix number, and continue until we have reached the latest one
-                    await DownloadSongs(settings.NextDownloadNumber.Value, latestSongNumber.Value, parameters.OutputPath, parameters.Threads);
-                    settings.NextDownloadNumber = latestSongNumber.Value + 1;
+                    await DownloadSongs(from, to, parameters.OutputPath, parameters.Threads);
+                    settings.NextDownloadNumber = to + 1;
                 }
             }
 
@@ -160,6 +173,22 @@ namespace OCReMixDownloader
                         break;
                     case "--output" when i + 1 < args.Length:
                         parameters.OutputPath = args[++i];
+                        break;
+                    case "--from" when i + 1 < args.Length:
+                        if (!int.TryParse(args[++i], out var from) || from < 1)
+                        {
+                            Console.WriteLine($"Invalid 'from' song nr: {args[i]}");
+                            return null;
+                        }
+                        parameters.From = from;
+                        break;
+                    case "--to" when i + 1 < args.Length:
+                        if (!int.TryParse(args[++i], out var to) || to < 1)
+                        {
+                            Console.WriteLine($"Invalid 'to' song nr: {args[i]}");
+                            return null;
+                        }
+                        parameters.To = to;
                         break;
                     case "--threads" when i + 1 < args.Length:
                         if (!int.TryParse(args[++i], out var threads) || threads < 1)
