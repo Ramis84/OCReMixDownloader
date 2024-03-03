@@ -36,7 +36,7 @@ On first run (when the specified config file does not exist yet or does not cont
 
 ### Prerequisites
 
-Before installing OCReMixDownloader, make sure that the latest [.Net Runtime (minimum 6.0)](https://dotnet.microsoft.com/download) is installed (available on Windows/Linux & macOS). To check your currently installed .Net version, run the following command in a Command Line window (Windows: Command Prompt/PowerShell, Linux/macOS: Terminal), and verify that the major version (first digit) is at least 6:
+Before installing OCReMixDownloader, make sure that the latest [.Net Runtime (minimum 8.0)](https://dotnet.microsoft.com/download) is installed (available on Windows/Linux & macOS). To check your currently installed .Net version, run the following command in a Command Line window (Windows: Command Prompt/PowerShell, Linux/macOS: Terminal), and verify that the major version (first digit) is at least 8:
 
    ```
    dotnet --version
@@ -69,7 +69,7 @@ You may also download the latest binaries from the [releases page](https://githu
 
 ### Run/compile from source
 
-The application has been developed using .Net 6 (C#), and can be compiled/run using Visual Studio Code or just the .Net CLI (included in the [.Net 6.0 SDK](https://dotnet.microsoft.com/download)). Download the [GitHub repository](https://github.com/Ramis84/OCRemixDownloader) and execute the terminal command `dotnet run` to run from source, or `dotnet build` to build binaries.
+The application has been developed using .Net 8 (C#), and can be compiled/run using Visual Studio Code or just the .Net CLI (included in the [.Net 8.0 SDK](https://dotnet.microsoft.com/download)). Download the [GitHub repository](https://github.com/Ramis84/OCRemixDownloader) and execute the terminal command `dotnet run` to run from source, or `dotnet build` to build binaries.
 
 ## Automation / scheduling
 
