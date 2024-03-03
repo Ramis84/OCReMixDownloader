@@ -36,6 +36,11 @@
 
   <ItemGroup>
     <PackageReference Include="HtmlAgilityPack" Version="1.11.59" />
+    <PackageReference Include="Microsoft.XmlSerializer.Generator" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <DotNetCliToolReference Include="Microsoft.XmlSerializer.Generator" Version="8.0.0" />
   </ItemGroup>
 
 </Project>
