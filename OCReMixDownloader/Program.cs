@@ -15,24 +15,24 @@ using HtmlAgilityPack;
 
 namespace OCReMixDownloader;
 
-class Program
+internal class Program
 {
-    private static readonly XmlSerializer RssSerializer = new XmlSerializer(typeof(RssRoot));
-    private static readonly Regex Md5HashRegex = new Regex("<strong>MD5 Checksum: </strong>(?<md5>[a-fA-F0-9]+)</li>");
-    private static readonly Regex DownloadLinkRegex = new Regex("<a href=\"(?<href>[^\"]+)\">Download from");
+    private static readonly XmlSerializer RssSerializer = new(typeof(RssRoot));
+    private static readonly Regex Md5HashRegex = new("<strong>MD5 Checksum: </strong>(?<md5>[a-fA-F0-9]+)</li>");
+    private static readonly Regex DownloadLinkRegex = new("<a href=\"(?<href>[^\"]+)\">Download from");
     private const string RssUrl = "https://ocremix.org/feeds/ten20/";
     private const string DownloadUrl = "https://ocremix.org/remix/OCR{0:D5}";
     private const string TorrentBaseUrl = "https://bt.ocremix.org/";
     private const string TorrentLinksPageUrl = "https://bt.ocremix.org/index.php?order=date&sort=descending";
 
     private static readonly HttpClient DownloadClient =
-        new HttpClient(
+        new(
             new HttpClientHandler
             {
                 AllowAutoRedirect = true
             });
 
-    static async Task Main(string[] args)
+    private static async Task Main(string[] args)
     {
         if (args.Length == 0)
         {
@@ -61,10 +61,8 @@ class Program
         if (parameters == null) return;
 
         // Check required parameters
-        if (parameters.OutputPath == null)
-        {
-            parameters.OutputPath = ".";
-        }
+        parameters.OutputPath ??= ".";
+
         if (!Directory.Exists(parameters.OutputPath))
         {
             Console.WriteLine($"Output folder path does not exist: {parameters.OutputPath}");
@@ -164,7 +162,7 @@ class Program
         // Read parameters from command line
         var parameters = new Parameters();
             
-        for (int i = 0; i < args.Length; i++)
+        for (var i = 0; i < args.Length; i++)
         {
             switch (args[i])
             {
@@ -212,31 +210,26 @@ class Program
 
     private static async Task<SettingsModel?> ReadSettings(string? configPath)
     {
-        if (configPath != null && File.Exists(configPath))
+        if (configPath == null || !File.Exists(configPath))
         {
-            try
-            {
-                var settingsContent = await File.ReadAllTextAsync(configPath);
-                return JsonSerializer.Deserialize<SettingsModel>(settingsContent) ?? new SettingsModel();
-            }
-            catch
-            {
-                return null;
-            }
+            // Use empty settings
+            return new SettingsModel();
         }
 
-        // Use empty settings
-        return new SettingsModel();
+        try
+        {
+            var settingsContent = await File.ReadAllTextAsync(configPath);
+            return JsonSerializer.Deserialize(settingsContent, SourceGenerationContext.Default.SettingsModel) ?? new SettingsModel();
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static async Task WriteSettings(string configPath, SettingsModel settings)
     {
-        var serializerOptions = new JsonSerializerOptions
-        {
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-            WriteIndented = true
-        };
-        var settingsContent = JsonSerializer.Serialize(settings, serializerOptions);
+        var settingsContent = JsonSerializer.Serialize(settings, SourceGenerationContext.Default.SettingsModel);
 
         try
         {
@@ -250,7 +243,7 @@ class Program
 
     private static async Task<int?> GetLatestSongNumberFromRss()
     {
-        // Get RSS feed, to read latest song number
+        // Get RSS feed, to read the latest song number
         var rssFeedResponse = await DownloadClient.GetAsync(RssUrl);
         if (!rssFeedResponse.IsSuccessStatusCode)
         {
@@ -280,8 +273,6 @@ class Program
         {
             return;
         }
-            
-        using var md5 = System.Security.Cryptography.MD5.Create();
 
         // Keep track of statistics of hosts to choose best mirrors
         var statisticsByHostname = new ConcurrentDictionary<string, HostStatistics>();
@@ -291,11 +282,11 @@ class Program
         var threadNumbers = Enumerable.Range(1, threadCount);
         await Task.WhenAll(threadNumbers
             .Take(songNumbersQueue.Count) // To prevent creating unnecessary tasks
-            .Select(async threadNumber =>
+            .Select(async _ =>
             {
                 while (songNumbersQueue.TryDequeue(out var songNr))
                 {
-                    await DownloadSong(songNr, outputPath, statisticsByHostname, md5);
+                    await DownloadSong(songNr, outputPath, statisticsByHostname);
                 }
             }));
     }
@@ -303,8 +294,7 @@ class Program
     private static async Task DownloadSong(
         int songNr,
         string outputPath,
-        ConcurrentDictionary<string, HostStatistics> statisticsByHostname,
-        System.Security.Cryptography.MD5 md5)
+        ConcurrentDictionary<string, HostStatistics> statisticsByHostname)
     {
         var success = false;
         var songLogMessages = new List<string>();
@@ -345,10 +335,8 @@ class Program
                    Try all mirrors until we find a working one
                    Shuffle the order mirrors are tried, to distribute load on all mirrors */
                 var songDownloadMirrorUris = DownloadLinkRegex.Matches(htmlContent)
-                    .Cast<Match>()
-                    .Where(x => x != null)
                     .Select(x => x.Groups["href"].Value) // Get url portion from link
-                    .Select(x => System.Web.HttpUtility.HtmlDecode(x)) // Decode HTML encoded characters, like "&amp;" to "&"
+                    .Select(System.Web.HttpUtility.HtmlDecode) // Decode HTML encoded characters, like "&amp;" to "&"
                     .Shuffle() // Randomize order of mirrors, to distribute load a bit
                     .Select(x => new Uri(x))
                     .Select(x => new
@@ -356,8 +344,8 @@ class Program
                         Uri = x,
                         HostStatistics = statisticsByHostname.TryGetValue(x.Host, out var hostStatistics) ? hostStatistics : new HostStatistics(0, 0, DateTime.MinValue)
                     })
-                    .OrderBy(x => x.HostStatistics.HostActiveRequestCount) // Prefer hosts with least number of active requests
-                    .ThenBy(x => x.HostStatistics.CompletedRequestCount) // For hosts with same number of active requests, prefer hosts with least number of completed requests
+                    .OrderBy(x => x.HostStatistics.HostActiveRequestCount) // Prefer hosts with the least number of active requests
+                    .ThenBy(x => x.HostStatistics.CompletedRequestCount) // For hosts with same number of active requests, prefer hosts with the least number of completed requests
                     .ThenBy(x => x.HostStatistics.LastStart) // Prefer hosts that we called the longest time ago
                     .Select(x => x.Uri)
                     .ToList();
@@ -366,6 +354,9 @@ class Program
                 var allMirrorHosts = songDownloadMirrorUris.Select(x => x.Host);
                 var mirrorsCountMessage = $"{songDownloadMirrorUris.Count} download mirrors found on page ({string.Join(", ", allMirrorHosts)})";
                 songLogMessages.Add(mirrorsCountMessage);
+
+                // Initialize MD5 hash algorithm
+                using var md5 = System.Security.Cryptography.MD5.Create();
 
                 foreach (var songDownloadMirrorUri in songDownloadMirrorUris)
                 {
@@ -390,7 +381,9 @@ class Program
                     HttpResponseMessage downloadResponse;
                     try
                     {
-                        downloadResponse = await DownloadClient.GetAsync(songDownloadMirrorUri);
+                        var downloadRequest = new HttpRequestMessage(HttpMethod.Get, songDownloadMirrorUri);
+                        downloadRequest.Headers.Add("User-Agent", "Other"); // Some web servers require User-Agent header
+                        downloadResponse = await DownloadClient.SendAsync(downloadRequest);
                     }
                     catch (Exception ex)
                     {
@@ -450,7 +443,7 @@ class Program
                 if (!success)
                 {
                     // All download links failed, skip
-                    var errorMessage = $"Failed: All download mirrors failed, skipping ReMix";
+                    var errorMessage = "Failed: All download mirrors failed, skipping ReMix";
                     songLogMessages.Add(errorMessage);
                     Console.WriteLine($"{songNr} {errorMessage}");
                 }
@@ -472,18 +465,11 @@ class Program
         }
     }
 
-    private class TorrentToDownload
+    private class TorrentToDownload(DateTime timeStamp, Uri uri, string fileName)
     {
-        public DateTime TimeStamp { get; }
-        public Uri Uri { get; }
-        public string FileName { get; }
-
-        public TorrentToDownload(DateTime timeStamp, Uri uri, string fileName)
-        {
-            TimeStamp = timeStamp;
-            Uri = uri;
-            FileName = fileName;
-        }
+        public DateTime TimeStamp { get; } = timeStamp;
+        public Uri Uri { get; } = uri;
+        public string FileName { get; } = fileName;
     }
 
     private static async Task DownloadTorrents(SettingsModel settings, string outputPath, int threadCount)
@@ -572,7 +558,7 @@ class Program
         var successfulDownloads = new ConcurrentBag<TorrentToDownload>();
         var threadNumbers = Enumerable.Range(1, threadCount);
         await Task.WhenAll(threadNumbers
-            .Select(async threadNumber =>
+            .Select(async _ =>
             {
                 while (torrentsToDownload.TryPop(out var torrentToDownload))
                 {
@@ -582,7 +568,7 @@ class Program
                         // Download was successful, get bytes
                         var downloadBytes = await downloadResponse.Content.ReadAsByteArrayAsync();
 
-                        var filePath = Path.Combine(outputPath, torrentToDownload.FileName!);
+                        var filePath = Path.Combine(outputPath, torrentToDownload.FileName);
                         await File.WriteAllBytesAsync(filePath, downloadBytes);
 
                         successfulDownloads.Add(torrentToDownload);
@@ -601,8 +587,7 @@ class Program
         // Store the latest torrent date in the settings, and all filenames in that date which have already been downloaded
         var successfulDownloadsInLatestDate = successfulDownloads
             .GroupBy(x => x.TimeStamp)
-            .OrderByDescending(x => x.Key)
-            .FirstOrDefault();
+            .MaxBy(x => x.Key);
         if (successfulDownloadsInLatestDate != null)
         {
             var timestamp = successfulDownloadsInLatestDate.Key;
@@ -612,7 +597,7 @@ class Program
                 settings.LastTorrentFiles = new List<string>();
             }
 
-            settings.LastTorrentFiles ??= new List<string>();
+            settings.LastTorrentFiles ??= [];
             settings.LastTorrentFiles.AddRange(successfulDownloadsInLatestDate.Select(x => x.FileName));
         }
     }

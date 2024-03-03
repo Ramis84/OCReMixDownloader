@@ -23,9 +23,9 @@ public static class EnumerableExtensions
         this IEnumerable<T> source, Random rng)
     {
         var buffer = source.ToList();
-        for (int i = 0; i < buffer.Count; i++)
+        for (var i = 0; i < buffer.Count; i++)
         {
-            int j = rng.Next(i, buffer.Count);
+            var j = rng.Next(i, buffer.Count);
             yield return buffer[j];
 
             buffer[j] = buffer[i];
