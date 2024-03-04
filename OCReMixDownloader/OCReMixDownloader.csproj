@@ -17,11 +17,12 @@
     <ToolCommandName>ocremixdownloader</ToolCommandName>
     <PackageOutputPath>./nupkg</PackageOutputPath>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
   
   <PropertyGroup>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>1.0.10</Version>
+    <Version>1.1.0</Version>
     <AssemblyName>ocremixdownloader</AssemblyName>
     <PackageProjectUrl>https://github.com/Ramis84/OCReMixDownloader</PackageProjectUrl>
   </PropertyGroup>

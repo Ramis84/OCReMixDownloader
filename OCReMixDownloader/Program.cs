@@ -17,7 +17,6 @@ namespace OCReMixDownloader;
 
 internal class Program
 {
-    private static readonly XmlSerializer RssSerializer = new(typeof(RssRoot));
     private static readonly Regex Md5HashRegex = new("<strong>MD5 Checksum: </strong>(?<md5>[a-fA-F0-9]+)</li>");
     private static readonly Regex DownloadLinkRegex = new("<a href=\"(?<href>[^\"]+)\">Download from");
     private const string RssUrl = "https://ocremix.org/feeds/ten20/";
@@ -37,7 +36,9 @@ internal class Program
         if (args.Length == 0)
         {
             // Print usage information
-            var version = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            var assembly = Assembly.GetEntryAssembly();
+            var versionAttribute = assembly?.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+            var version = versionAttribute?.InformationalVersion;
 
             Console.WriteLine($"ocremixdownloader {version}:");
             Console.WriteLine("  Downloads OCReMix songs to a specified folder, remembering the last downloaded song.");
@@ -251,8 +252,12 @@ internal class Program
             return null;
         }
 
-        var rssFeedXml = await rssFeedResponse.Content.ReadAsStreamAsync();
-        var rssFeed = (RssRoot?)RssSerializer.Deserialize(rssFeedXml);
+        var rssFeedXmlStream = await rssFeedResponse.Content.ReadAsStreamAsync();
+
+        // Deserialize RSS Feed XML
+        var rssSerializer = new XmlSerializer(typeof(RssRoot));
+        var rssFeed = (RssRoot?)rssSerializer.Deserialize(rssFeedXmlStream);
+
         var latestSongRss = rssFeed?.Channel?.Items?.FirstOrDefault();
         if (latestSongRss?.Link == null)
         {
@@ -337,8 +342,9 @@ internal class Program
                 var songDownloadMirrorUris = DownloadLinkRegex.Matches(htmlContent)
                     .Select(x => x.Groups["href"].Value) // Get url portion from link
                     .Select(System.Web.HttpUtility.HtmlDecode) // Decode HTML encoded characters, like "&amp;" to "&"
+                    .Where(x => x != null)
                     .Shuffle() // Randomize order of mirrors, to distribute load a bit
-                    .Select(x => new Uri(x))
+                    .Select(x => new Uri(x!))
                     .Select(x => new
                     {
                         Uri = x,
