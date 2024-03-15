@@ -43,16 +43,18 @@ internal class Program
             Console.WriteLine($"ocremixdownloader {version}:");
             Console.WriteLine("  Downloads OCReMix songs to a specified folder, remembering the last downloaded song.");
             Console.WriteLine("Usage:");
-            Console.WriteLine("  ocremixdownloader [options]");
+            Console.WriteLine("  ocremixdownloader [option]... [songNr]...");
             Console.WriteLine("Options:");
-            Console.WriteLine("  (NOTE: At least one parameter are required to run.)");
+            Console.WriteLine("  (NOTE: At least one parameter/option/songNr are required to run.)");
             Console.WriteLine("  --output <PATH>    (Optional) The path (absolute/relative) where songs will be stored (default: The current folder/working directory).");
             Console.WriteLine("  --config <PATH>    (Optional) The path (absolute/relative) of file (json) where settings and last downloaded song number will be stored. Will be created if it does not exist.");
             Console.WriteLine("  --from <SONG_NR>   (Optional) The first song nr to download. If not set, and not available in config file, user will be asked to input it during startup.");
             Console.WriteLine("  --to <SONG_NR>     (Optional) The last song nr to download. If not set, all songs including the latest one will be downloaded.");
             Console.WriteLine("  --threads <COUNT>  (Optional) Number of concurrent downloads (default: 1).");
             Console.WriteLine("  --includeTorrents  (Optional) Downloads torrents files as well, both Collections and Albums (only the .torrent, needs to be added to torrent client manually).");
+            Console.WriteLine("  --ignoreHashErrors (Optional) If the hash of a download differs from the reference on the page, the program will just give a warning and keep the download anyway.");
             Console.WriteLine("Example:");
+            Console.WriteLine("  ocremixdownloader 2352 3751");
             Console.WriteLine("  ocremixdownloader --config \"C:/Files/settings.json\" --output \"C:/Download/\"");
             return;
         }
@@ -70,8 +72,15 @@ internal class Program
             return;
         }
 
+        if (parameters.Songs.Any())
+        {
+            // When downloading specific songs, ignore most other parameters
+            await DownloadSongs(parameters.Songs, parameters.OutputPath, parameters.Threads, parameters.IgnoreHashErrors);
+            return;
+        }
+
         // Check optional parameters
-        if (parameters.ConfigPath == null)
+        if (parameters.ConfigPath == null && !parameters.To.HasValue)
         {
             Console.WriteLine("WARNING: --config option omitted, will not remember the last downloaded song.");
         }
@@ -142,7 +151,9 @@ internal class Program
                 Console.WriteLine($"There are {to - from + 1} ReMix(es) to attempt to download");
 
                 // Begin downloading from the given ReMix number, and continue until we have reached the latest one
-                await DownloadSongs(from, to, parameters.OutputPath, parameters.Threads);
+                var songNrs = Enumerable.Range(from, to - from + 1);
+
+                await DownloadSongs(songNrs, parameters.OutputPath, parameters.Threads, parameters.IgnoreHashErrors);
                 settings.NextDownloadNumber = to + 1;
             }
         }
@@ -200,9 +211,17 @@ internal class Program
                 case "--includeTorrents":
                     parameters.IncludeTorrents = true;
                     break;
+                case "--ignoreHashErrors":
+                    parameters.IgnoreHashErrors = true;
+                    break;
                 default:
-                    Console.WriteLine($"Invalid parameter: {args[i]}");
-                    return null;
+                    if (!int.TryParse(args[i], out var single) || single < 1)
+                    {
+                        Console.WriteLine($"Invalid parameter: {args[i]}");
+                        return null;
+                    }
+                    parameters.Songs.Add(single);
+                    break;
             }
         }
 
@@ -272,18 +291,17 @@ internal class Program
 
     private record HostStatistics(int HostActiveRequestCount, int CompletedRequestCount, DateTime LastStart);
 
-    private static async Task DownloadSongs(int fromSongNr, int toSongNr, string outputPath, int threadCount)
+    private static async Task DownloadSongs(
+        IEnumerable<int> songNrs, 
+        string outputPath, 
+        int threadCount,
+        bool ignoreHashErrors)
     {
-        if (fromSongNr > toSongNr)
-        {
-            return;
-        }
-
         // Keep track of statistics of hosts to choose best mirrors
         var statisticsByHostname = new ConcurrentDictionary<string, HostStatistics>();
 
         // Begin downloading from the given ReMix number, and continue until we have reached the latest one
-        var songNumbersQueue = new ConcurrentQueue<int>(Enumerable.Range(fromSongNr, toSongNr - fromSongNr + 1));
+        var songNumbersQueue = new ConcurrentQueue<int>(songNrs);
         var threadNumbers = Enumerable.Range(1, threadCount);
         await Task.WhenAll(threadNumbers
             .Take(songNumbersQueue.Count) // To prevent creating unnecessary tasks
@@ -291,15 +309,15 @@ internal class Program
             {
                 while (songNumbersQueue.TryDequeue(out var songNr))
                 {
-                    await DownloadSong(songNr, outputPath, statisticsByHostname);
+                    await DownloadSong(songNr, outputPath, statisticsByHostname, ignoreHashErrors);
                 }
             }));
     }
 
-    private static async Task DownloadSong(
-        int songNr,
+    private static async Task DownloadSong(int songNr,
         string outputPath,
-        ConcurrentDictionary<string, HostStatistics> statisticsByHostname)
+        ConcurrentDictionary<string, HostStatistics> statisticsByHostname, 
+        bool ignoreHashError)
     {
         var success = false;
         var songLogMessages = new List<string>();
@@ -424,11 +442,21 @@ internal class Program
                             var md5HashComputed = Convert.ToHexString(md5HashComputedBytes).ToLower();
                             if (md5HashComputed != md5Hash)
                             {
-                                // MD5 not matching, try next mirror
-                                var warningMessage = $"Skipping mirror, MD5 hash failure: {songDownloadMirrorUri}, Computed: {md5HashComputed}, Reference: {md5Hash}";
-                                songLogMessages.Add(warningMessage);
-                                Console.WriteLine($"{songNr} {warningMessage}");
-                                continue;
+                                // MD5 not matching, 
+                                if (ignoreHashError)
+                                {
+                                    // Just print warning
+                                    var warningMessage = $"Warning, MD5 hash failure: {songDownloadMirrorUri}, Computed: {md5HashComputed}, Reference: {md5Hash}";
+                                    Console.WriteLine($"{songNr} {warningMessage}");
+                                }
+                                else
+                                {
+                                    // Try next mirror
+                                    var warningMessage = $"Skipping mirror, MD5 hash failure: {songDownloadMirrorUri}, Computed: {md5HashComputed}, Reference: {md5Hash}";
+                                    songLogMessages.Add(warningMessage);
+                                    Console.WriteLine($"{songNr} {warningMessage}");
+                                    continue;
+                                }
                             }
                         }
 
