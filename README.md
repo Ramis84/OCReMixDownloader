@@ -19,7 +19,7 @@ A cross-platform command line tool/script to download the latest OC ReMix (OverC
 ## Using OCReMixDownloader
 ```
 Usage:
-  ocremixdownloader [options]
+  ocremixdownloader [option]... [songNr]...
 Options:
   (NOTE: At least one parameter are required to run.)
   --output <PATH>    (Optional) The path (absolute/relative) where songs will be stored (default: The current folder/working directory).
@@ -28,7 +28,9 @@ Options:
   --to <SONG_NR>     (Optional) The last song nr to download. If not set, all songs including the latest one will be downloaded.
   --threads <COUNT>  (Optional) Number of concurrent downloads (default: 1).
   --includeTorrents  (Optional) Downloads torrents files as well, both Collections and Albums (only the .torrent, needs to be added to torrent client manually).
+  --ignoreHashErrors (Optional) If the hash of a download differs from the reference on the page, the program will just give a warning and keep the download anyway.
 Example:
+  ocremixdownloader 2352 3751
   ocremixdownloader --config "C:/Files/settings.json" --output "C:/Download/"
 ```
 
