@@ -15,7 +15,7 @@ There are no automated tests or linting configurations in this project.
 
 ## Architecture
 
-**OCReMixDownloader** is a cross-platform .NET 8 CLI tool (global tool: `ocremixdownloader`) that downloads video game music remixes from ocremix.org. It supports individual song downloads, ranges, concurrent downloads with mirror load balancing, MD5 hash verification, and torrent file downloads.
+**OCReMixDownloader** is a cross-platform .NET 10 CLI tool (global tool: `ocremixdownloader`) that downloads video game music remixes from ocremix.org. It supports individual song downloads, ranges, concurrent downloads with mirror load balancing, MD5 hash verification, and torrent file downloads.
 
 ### Core files
 
@@ -43,7 +43,7 @@ There are no automated tests or linting configurations in this project.
 
 ### Build configuration
 
-- `net8.0`, nullable reference types enabled
+- `net10.0`, nullable reference types enabled
 - Release build treats all warnings as errors
 - Packaged as `dotnet-ocremixdownloader` global tool (command: `ocremixdownloader`)
 - Output nupkg goes to `./nupkg/`

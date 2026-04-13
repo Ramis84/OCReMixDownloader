@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Authors>Christoffer Ramqvist</Authors>
     <Company></Company>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
@@ -22,7 +22,7 @@
   
   <PropertyGroup>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>1.1.1</Version>
+    <Version>1.2.0</Version>
     <AssemblyName>ocremixdownloader</AssemblyName>
     <PackageProjectUrl>https://github.com/Ramis84/OCReMixDownloader</PackageProjectUrl>
   </PropertyGroup>
@@ -36,12 +36,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="HtmlAgilityPack" Version="1.11.59" />
-    <PackageReference Include="Microsoft.XmlSerializer.Generator" Version="8.0.0" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
+    <PackageReference Include="Microsoft.XmlSerializer.Generator" Version="10.0.5" />
   </ItemGroup>
 
   <ItemGroup>
-    <DotNetCliToolReference Include="Microsoft.XmlSerializer.Generator" Version="8.0.0" />
+    <DotNetCliToolReference Include="Microsoft.XmlSerializer.Generator" Version="10.0.5" />
   </ItemGroup>
 
 </Project>
