@@ -542,7 +542,7 @@ internal class Program
         }
 
         // Go through all the latest torrents, until we reach a torrent we have already downloaded
-        var torrentsToDownload = new ConcurrentStack<TorrentToDownload>();
+        var torrentsToDownload = new List<TorrentToDownload>();
         foreach (var row in rows)
         {
             // Read timestamp
@@ -586,7 +586,7 @@ internal class Program
             }
 
             // Queue it for download
-            torrentsToDownload.Push(new TorrentToDownload(timeStamp, torrentUri, fileName));
+            torrentsToDownload.Add(new TorrentToDownload(timeStamp, torrentUri, fileName));
         }
 
         if (torrentsToDownload.Count == 0)
@@ -599,33 +599,37 @@ internal class Program
 
         // Download all new torrents, oldest first
         var successfulDownloads = new ConcurrentBag<TorrentToDownload>();
-        var threadNumbers = Enumerable.Range(1, threadCount);
-        await Task.WhenAll(threadNumbers
-            .Select(async _ =>
+        using var semaphore = new SemaphoreSlim(threadCount);
+        await Task.WhenAll(Enumerable.Reverse(torrentsToDownload).Select(async torrentToDownload =>
+        {
+            await semaphore.WaitAsync();
+            try
             {
-                while (torrentsToDownload.TryPop(out var torrentToDownload))
+                var downloadResponse = await DownloadClient.GetAsync(torrentToDownload.Uri);
+                if (downloadResponse.IsSuccessStatusCode)
                 {
-                    var downloadResponse = await DownloadClient.GetAsync(torrentToDownload.Uri);
-                    if (downloadResponse.IsSuccessStatusCode)
-                    {
-                        // Download was successful, get bytes
-                        var downloadBytes = await downloadResponse.Content.ReadAsByteArrayAsync();
+                    // Download was successful, get bytes
+                    var downloadBytes = await downloadResponse.Content.ReadAsByteArrayAsync();
 
-                        var filePath = Path.Combine(outputPath, torrentToDownload.FileName);
-                        await File.WriteAllBytesAsync(filePath, downloadBytes);
+                    var filePath = Path.Combine(outputPath, torrentToDownload.FileName);
+                    await File.WriteAllBytesAsync(filePath, downloadBytes);
 
-                        successfulDownloads.Add(torrentToDownload);
+                    successfulDownloads.Add(torrentToDownload);
 
-                        Console.WriteLine($"{torrentToDownload.TimeStamp:yyyy-MM-dd} OK: {torrentToDownload.Uri}");
-                    }
-                    else
-                    {
-                        // Download failed, skip
-                        Console.WriteLine(
-                            $"{torrentToDownload.TimeStamp:yyyy-MM-dd} Error: Could not download {torrentToDownload.Uri}, StatusCode: {(int) downloadResponse.StatusCode}");
-                    }
+                    Console.WriteLine($"{torrentToDownload.TimeStamp:yyyy-MM-dd} OK: {torrentToDownload.Uri}");
                 }
-            }));
+                else
+                {
+                    // Download failed, skip
+                    Console.WriteLine(
+                        $"{torrentToDownload.TimeStamp:yyyy-MM-dd} Error: Could not download {torrentToDownload.Uri}, StatusCode: {(int) downloadResponse.StatusCode}");
+                }
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        }));
 
         // Store the latest torrent date in the settings, and all filenames in that date which have already been downloaded
         var successfulDownloadsInLatestDate = successfulDownloads
