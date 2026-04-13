@@ -9,6 +9,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using HtmlAgilityPack;
@@ -299,19 +300,20 @@ internal class Program
     {
         // Keep track of statistics of hosts to choose best mirrors
         var statisticsByHostname = new ConcurrentDictionary<string, HostStatistics>();
+        using var semaphore = new SemaphoreSlim(threadCount);
 
-        // Begin downloading from the given ReMix number, and continue until we have reached the latest one
-        var songNumbersQueue = new ConcurrentQueue<int>(songNrs);
-        var threadNumbers = Enumerable.Range(1, threadCount);
-        await Task.WhenAll(threadNumbers
-            .Take(songNumbersQueue.Count) // To prevent creating unnecessary tasks
-            .Select(async _ =>
+        await Task.WhenAll(songNrs.Select(async songNr =>
+        {
+            await semaphore.WaitAsync();
+            try
             {
-                while (songNumbersQueue.TryDequeue(out var songNr))
-                {
-                    await DownloadSong(songNr, outputPath, statisticsByHostname, ignoreHashErrors);
-                }
-            }));
+                await DownloadSong(songNr, outputPath, statisticsByHostname, ignoreHashErrors);
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        }));
     }
 
     private static async Task DownloadSong(int songNr,
