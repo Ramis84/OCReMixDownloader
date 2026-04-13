@@ -30,7 +30,10 @@ internal class Program
             new HttpClientHandler
             {
                 AllowAutoRedirect = true
-            });
+            })
+        {
+            Timeout = TimeSpan.FromSeconds(30)
+        };
 
     private static async Task Main(string[] args)
     {
@@ -242,8 +245,9 @@ internal class Program
             var settingsContent = await File.ReadAllTextAsync(configPath);
             return JsonSerializer.Deserialize(settingsContent, SourceGenerationContext.Default.SettingsModel) ?? new SettingsModel();
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"Error reading config: {ex.Message}");
             return null;
         }
     }
@@ -286,7 +290,11 @@ internal class Program
         }
 
         var latestSongNumberString = Regex.Match(latestSongRss.Link, @"\d+").Value; // Extract song number from URL
-        var latestSongNumber = int.Parse(latestSongNumberString);
+        if (!int.TryParse(latestSongNumberString, out var latestSongNumber))
+        {
+            Console.WriteLine("Error: Could not parse song number from RSS link");
+            return null;
+        }
         return latestSongNumber;
     }
 
@@ -400,7 +408,8 @@ internal class Program
                         new HostStatistics(1, 0, DateTime.Now),
                         (_, oldStatistics) => oldStatistics with
                         {
-                            HostActiveRequestCount = oldStatistics.HostActiveRequestCount + 1
+                            HostActiveRequestCount = oldStatistics.HostActiveRequestCount + 1,
+                            LastStart = DateTime.Now
                         });
 
                     // Try to download the ReMix
@@ -462,7 +471,10 @@ internal class Program
                             }
                         }
 
-                        // Store ReMix bytes to file on disk
+                        // Store ReMix bytes to file on disk.
+                        // Note: the full file is buffered in memory (ReadAsByteArrayAsync) to allow MD5
+                        // verification before writing. With many concurrent threads and large files this
+                        // increases RAM usage proportionally; accepted trade-off for hash integrity.
                         var filePath = Path.Combine(outputPath, songFileName);
                         await File.WriteAllBytesAsync(filePath, downloadBytes);
                         success = true;
@@ -501,12 +513,7 @@ internal class Program
         }
     }
 
-    private class TorrentToDownload(DateTime timeStamp, Uri uri, string fileName)
-    {
-        public DateTime TimeStamp { get; } = timeStamp;
-        public Uri Uri { get; } = uri;
-        public string FileName { get; } = fileName;
-    }
+    private record TorrentToDownload(DateTime TimeStamp, Uri Uri, string FileName);
 
     private static async Task DownloadTorrents(SettingsModel settings, string outputPath, int threadCount)
     {
